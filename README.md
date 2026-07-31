@@ -1,28 +1,59 @@
 # Uri Moa Wallet
 
-Static frontend demo for Uri Moa Wallet with on-chain transaction hooks for GIWA Sepolia.
+**Programmable Shared Wallet on GIWA**
 
-## Current deployed contracts
+Uri Moa is a shared fund management tool built on GIWA.  
+It allows groups of people to collectively manage money with clear roles, spending limits, and on-chain approval rules.
 
-- UriMoaTestUSDC: `0xb999CdA0Da5D2534F8e6d020557D3bb40adB6F66`
-- SharedVaultFactory: `0x32DE7f4872d666eDF6042439C37b275bEB27bc28`
-- Network: GIWA Sepolia, Chain ID `91342`
+Personal funds stay private. Shared funds follow transparent, enforceable rules.
 
-## Deploy
+## Key Features
 
-Upload this folder to GitHub, then import the repository in Vercel.
+- Create shared vaults with customizable rules
+- Role-based permissions (Owner / Admin / Member)
+- Daily spending limits & large expense approval
+- On-chain approval flow to prevent single-person control
+- Clear separation between personal wallet and shared vaults
+- Designed for future embedding into GIWA Wallet
 
-- Framework Preset: Other
-- Build Command: leave empty, or use `npm run build`
-- Output Directory: leave empty
+## Live Demo
 
-Do not upload `.env` or `node_modules/`. They are ignored by `.gitignore`.
+- Frontend: (请替换成你的 Vercel 链接)
+- Network: GIWA Sepolia (Chain ID: 91342)
 
-## On-chain mode
+## Deployed Contracts (GIWA Sepolia)
 
-The deployed GIWA Sepolia addresses are already filled in `ONCHAIN_CONFIG` inside `index.html`:
+| Contract              | Address                                      |
+|-----------------------|----------------------------------------------|
+| UriMoaTestUSDC        | `0xb999CdA0Da5D2534F8e6d020557D3bb40adB6F66` |
+| SharedVaultFactory    | `0x32DE7f4872d666eDF6042439C37b275bEB27bc28` |
 
-- `testUSDC`
-- `vaultFactory`
+## Tech Stack
 
-See `ONCHAIN_SETUP.md` for the transaction demo flow.
+- Smart Contracts: Solidity + Hardhat
+- Frontend: Static HTML + JavaScript (on-chain interaction)
+- Network: GIWA Sepolia
+
+## How to Run Locally
+
+1. Clone the repository
+2. Open `index.html` directly, or deploy to Vercel
+3. Connect wallet to GIWA Sepolia
+4. Use the Faucet to get test tokens
+
+## Project Structure
+
+- `contracts/` — Smart contract source code
+- `scripts/` — Deployment scripts
+- `index.html` — Frontend demo
+- `ONCHAIN_SETUP.md` — On-chain interaction guide
+- `deployments.giwa-sepolia.json` — Deployment records
+
+## Team
+
+**Sora Unit**  
+A two-person team of Chinese builders based in Japan.
+
+## License
+
+MIT
