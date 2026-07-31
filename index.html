@@ -700,9 +700,9 @@
   };
   var chain={provider:null,signer:null,address:'',lastVault:''};
   var currentVault=null;
-  var STORAGE_KEY='uriMoaWallet.liveVaults.v9';
-  var VAULT_ACTIVITY_KEY='uriMoaWallet.vaultActivityByAddress.v9';
-  var WALLET_ACTIVITY_KEY='uriMoaWallet.walletActivity.v9';
+  var STORAGE_KEY='uriMoaWallet.liveVaults.v10';
+  var VAULT_ACTIVITY_KEY='uriMoaWallet.vaultActivityByAddress.v10';
+  var WALLET_ACTIVITY_KEY='uriMoaWallet.walletActivity.v10';
   var walletActivity=[];
   var vaultActivityByAddress={};
   function shortAddr(a){return a?a.slice(0,6)+'...'+a.slice(-4):'Not connected'}
@@ -732,7 +732,7 @@
     chain.signer=await chain.provider.getSigner();
     chain.address=await chain.signer.getAddress();
     $('chainWallet').textContent=shortAddr(chain.address);
-    $('chainMode').textContent=(isConfigured('testUSDC')&&isConfigured('vaultFactory'))?'Live contracts configured · Build v9':'Wallet connected · contracts pending · Build v9';
+    $('chainMode').textContent=(isConfigured('testUSDC')&&isConfigured('vaultFactory'))?'Live contracts configured · Build v10':'Wallet connected · contracts pending · Build v10';
     return chain.signer;
   }
   function setWalletBadge(connected,label){
@@ -761,7 +761,7 @@
     setWalletBadge(true,'Demo wallet · 0x71A2...cD04');
     if($('personalTokenBalance'))$('personalTokenBalance').textContent='--';
     if($('chainWallet'))$('chainWallet').textContent=chain.address;
-    if($('chainMode'))$('chainMode').textContent='Demo mode · wallet not detected · Build v9';
+    if($('chainMode'))$('chainMode').textContent='Demo mode · wallet not detected · Build v10';
     setChainStatus(msg||'Demo mode ready');
     showToast('Demo Mode',label+' opened without wallet extension','w');
   }
@@ -824,7 +824,7 @@
         saved.forEach(function(v){if(v&&v.address&&!existing[v.address]){delete v.activity;vaults.push(v)}});
       }
       var last=localStorage.getItem('uriMoaWallet.lastVault');
-      if(isLiveAddress(last))ensureLiveVaultFromAddress(last);
+      if(isLiveAddress(last))ensureLiveVaultFromAddress(last,false);
     }catch(e){}
   }
   function isLiveAddress(a){return !!a&&a.startsWith('0x')&&a.length===42}
@@ -835,11 +835,11 @@
     if(chain.lastVault&&isLiveAddress(chain.lastVault))return chain.lastVault;
     return '';
   }
-  function ensureLiveVaultFromAddress(addr){
+  function ensureLiveVaultFromAddress(addr,activate){
     if(!isLiveAddress(addr))return null;
     var found=null;
     vaults.forEach(function(v){if(v.address&&v.address.toLowerCase()===addr.toLowerCase())found=v});
-    if(found){currentVault=found;return found}
+    if(found){if(activate!==false)currentVault=found;return found}
     var v={id:'v'+Date.now(),icon:'L',name:'Live Imported Vault',demo:false,desc:'Live vault · restored from chain address',bal:0,month:0,role:'Admin',hasAp:false,address:addr};
     vaults.push(v);
     currentVault=v;
@@ -1011,17 +1011,18 @@
       list.appendChild(row);
     });
   }
+  function addVaultActivityFor(addr,title,sub,amount,type){
+    var key=normAddr(addr);
+    if(!key)return;
+    vaultActivityByAddress[key]=vaultActivityByAddress[key]||[];
+    vaultActivityByAddress[key].unshift([title,sub,amount,type||'pending']);
+    vaultActivityByAddress[key]=vaultActivityByAddress[key].slice(0,20);
+    if(currentVault&&normAddr(currentVault.address)===key)renderVaultActivity(currentVault);
+    saveVaultActivity();
+    saveLiveVaults();
+  }
   function addVaultActivity(title,sub,amount,type){
-    if(currentVault){
-      var key=normAddr(currentVault.address);
-      if(!key)return;
-      vaultActivityByAddress[key]=vaultActivityByAddress[key]||[];
-      vaultActivityByAddress[key].unshift([title,sub,amount,type||'pending']);
-      vaultActivityByAddress[key]=vaultActivityByAddress[key].slice(0,20);
-      renderVaultActivity(currentVault);
-      saveVaultActivity();
-      saveLiveVaults();
-    }
+    addVaultActivityFor(getActiveVaultAddress(),title,sub,amount,type);
   }
   function addGlobalActivity(title,sub,amount,type){
     walletActivity.unshift([title,sub,amount,type||'income']);
@@ -1170,8 +1171,19 @@
   // VAULT DETAIL HEADER
   $('btnBack').onclick=function(){showPage('vaults')};
   $('btnInvite').onclick=function(){showToast('Invite','Invite link copied','')};
-  $('btnCopyVault').onclick=function(){showToast('Vault Address',$('vaultAddr').textContent+' copied','g')};
-  $('btnCopyVault2').onclick=function(){showToast('Vault Address',$('vaultAddr').textContent+' copied','g')};
+  async function copyVaultAddress(){
+    var addr=document.getElementById('vaultAddr').textContent.trim();
+    if(!isLiveAddress(addr)){showToast('Copy','No live vault address to copy','w');return}
+    try{
+      await navigator.clipboard.writeText(addr);
+      showToast('Copied',shortAddr(addr)+' copied to clipboard','g');
+    }catch(e){
+      prompt('Copy vault address manually',addr);
+      showToast('Copy','Clipboard blocked; address shown for manual copy','w');
+    }
+  }
+  document.getElementById('btnCopyVault').onclick=copyVaultAddress;
+  document.getElementById('btnCopyVault2').onclick=copyVaultAddress;
   $('btnDeposit').onclick=function(){
     var vault=getActiveVaultAddress();
     if(!isConfigured('testUSDC')||!isLiveAddress(vault)){
@@ -1181,7 +1193,8 @@
       vault=pasted;
       $('vaultAddr').textContent=vault;
     }
-    ensureLiveVaultFromAddress(vault);
+    var activeVault=ensureLiveVaultFromAddress(vault,false)||currentVault;
+    if(activeVault&&normAddr(activeVault.address)===normAddr(vault)){currentVault=activeVault;renderVaultActivity(activeVault)}
     var amount=prompt('Deposit amount (tUSDC)','10');
     if(amount===null)return;
     amount=String(amount).trim();
@@ -1196,15 +1209,17 @@
         return await vaultContract.deposit(ethers.parseUnits(amount,ONCHAIN_CONFIG.tokenDecimals));
       }).then(function(r){
         if(!r)return;
-        if(currentVault){currentVault.desc='Live vault · funded on-chain';}
-        addVaultActivity('Vault deposit','You · just now','+'+amount,'income');
+        var targetVault=ensureLiveVaultFromAddress(vault,false);
+        if(targetVault){targetVault.desc='Live vault ? funded on-chain';}
+        addVaultActivityFor(vault,'Vault deposit','You ? just now','+'+amount,'income');
         refreshPersonalBalance();
-        refreshVaultBalance(currentVault);
+        refreshVaultBalance(targetVault);
         renderVaults();
         saveLiveVaults();
       });
     });
   };
+
   $('btnInvite2').onclick=function(){showToast('Invite','Invite link copied','')};
 
   // TABS
@@ -1216,12 +1231,14 @@
   $('btnApprove').onclick=function(){
     var vault=getActiveVaultAddress();
     if(!isLiveAddress(vault)){showToast('Approve','Open or paste a live vault address first','w');setChainStatus('No live vault address');return}
-    ensureLiveVaultFromAddress(vault);
+    var approveVault=ensureLiveVaultFromAddress(vault,false);
+    if(approveVault&&normAddr(approveVault.address)===normAddr(getActiveVaultAddress()))currentVault=approveVault;
     sendTx('Approve payout',async function(signer){
       var vaultContract=new ethers.Contract(vault,ABIS.vault,signer);
       return await vaultContract.approvePayout(0);
-    }).then(function(receipt){if(receipt){$('apCard').style.display='none';updateBadge(-1);addVaultActivity('Payout approved','You · just now','0','income');saveLiveVaults()}});
+    }).then(function(receipt){if(receipt){$('apCard').style.display='none';updateBadge(-1);addVaultActivityFor(vault,'Payout approved','You ? just now','0','income');saveLiveVaults()}});
   };
+
   $('btnDecline').onclick=function(){showToast('Declined','Request rejected','w');$('apCard').style.display='none';updateBadge(-1);};
 
   // MODAL: NEW EXPENSE
@@ -1235,11 +1252,11 @@
     closeModal('newExpense');
     var vault=getActiveVaultAddress();
     if(isLiveAddress(vault)&&isLiveAddress(recv)){
-      ensureLiveVaultFromAddress(vault);
+      ensureLiveVaultFromAddress(vault,false);
       sendTx('Request payout',async function(signer){
         var vaultContract=new ethers.Contract(vault,ABIS.vault,signer);
         return await vaultContract.requestPayout(recv,ethers.parseUnits(String(amt),ONCHAIN_CONFIG.tokenDecimals),pur);
-      }).then(function(r){if(r){addVaultActivity(pur+' pending approval','You · just now','-'+amt,'pending');saveLiveVaults()}});
+      }).then(function(r){if(r){addVaultActivityFor(vault,pur+' pending approval','You · just now','-'+amt,'pending');saveLiveVaults()}});
       return;
     }
     if(amt>50){
@@ -1255,12 +1272,14 @@
   $('btnSettle').onclick=function(){
     var vault=getActiveVaultAddress();
     if(!isLiveAddress(vault)){showToast('Settlement','Open or paste a live vault address first','w');setChainStatus('No live vault address');return}
-    ensureLiveVaultFromAddress(vault);
+    var settleVault=ensureLiveVaultFromAddress(vault,false);
+    if(settleVault&&normAddr(settleVault.address)===normAddr(getActiveVaultAddress()))currentVault=settleVault;
     sendTx('Settle equal refund',async function(signer){
       var vaultContract=new ethers.Contract(vault,ABIS.vault,signer);
       return await vaultContract.settleEqual([chain.address]);
-    }).then(function(r){if(r){addVaultActivity('Settlement executed','You · just now','0','expense');refreshPersonalBalance();refreshVaultBalance(currentVault);saveLiveVaults()}});
+    }).then(function(r){if(r){addVaultActivityFor(vault,'Settlement executed','You ? just now','0','expense');refreshPersonalBalance();refreshVaultBalance(settleVault||currentVault);saveLiveVaults()}});
   };
+
   $('modal-newExpense').onclick=function(e){if(e.target===$('modal-newExpense'))closeModal('newExpense');};
   $('modal-connect').onclick=function(e){if(e.target===$('modal-connect'))closeModal('connect');};
 
@@ -1304,6 +1323,11 @@
 
 </body>
 </html>
+
+
+
+
+
 
 
 
