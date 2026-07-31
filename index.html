@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -700,9 +700,11 @@
   };
   var chain={provider:null,signer:null,address:'',lastVault:''};
   var currentVault=null;
-  var STORAGE_KEY='uriMoaWallet.liveVaults.v8';
-  var WALLET_ACTIVITY_KEY='uriMoaWallet.walletActivity.v8';
+  var STORAGE_KEY='uriMoaWallet.liveVaults.v9';
+  var VAULT_ACTIVITY_KEY='uriMoaWallet.vaultActivityByAddress.v9';
+  var WALLET_ACTIVITY_KEY='uriMoaWallet.walletActivity.v9';
   var walletActivity=[];
+  var vaultActivityByAddress={};
   function shortAddr(a){return a?a.slice(0,6)+'...'+a.slice(-4):'Not connected'}
   function explorerLink(hash){return (ONCHAIN_CONFIG.blockExplorerUrls[0]||'')+'/tx/'+hash}
   function walletChainParams(){
@@ -730,7 +732,7 @@
     chain.signer=await chain.provider.getSigner();
     chain.address=await chain.signer.getAddress();
     $('chainWallet').textContent=shortAddr(chain.address);
-    $('chainMode').textContent=(isConfigured('testUSDC')&&isConfigured('vaultFactory'))?'Live contracts configured · Build v8':'Wallet connected · contracts pending · Build v8';
+    $('chainMode').textContent=(isConfigured('testUSDC')&&isConfigured('vaultFactory'))?'Live contracts configured · Build v9':'Wallet connected · contracts pending · Build v9';
     return chain.signer;
   }
   function setWalletBadge(connected,label){
@@ -759,7 +761,7 @@
     setWalletBadge(true,'Demo wallet · 0x71A2...cD04');
     if($('personalTokenBalance'))$('personalTokenBalance').textContent='--';
     if($('chainWallet'))$('chainWallet').textContent=chain.address;
-    if($('chainMode'))$('chainMode').textContent='Demo mode · wallet not detected · Build v8';
+    if($('chainMode'))$('chainMode').textContent='Demo mode · wallet not detected · Build v9';
     setChainStatus(msg||'Demo mode ready');
     showToast('Demo Mode',label+' opened without wallet extension','w');
   }
@@ -787,8 +789,23 @@
     var token=new ethers.Contract(ONCHAIN_CONFIG.testUSDC,ABIS.testUSDC,chain.signer);
     return await token.balanceOf(addr);
   }
+  function normAddr(a){return isLiveAddress(a)?a.toLowerCase():''}
   function saveLiveVaults(){
-    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(vaults.filter(function(v){return !v.demo})))}catch(e){}
+    try{
+      var clean=vaults.filter(function(v){return !v.demo}).map(function(v){
+        return {id:v.id,icon:v.icon,name:v.name,demo:false,desc:v.desc,bal:v.bal,month:v.month,role:v.role,hasAp:v.hasAp,address:v.address,approval:v.approval||null};
+      });
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(clean));
+    }catch(e){}
+  }
+  function saveVaultActivity(){
+    try{localStorage.setItem(VAULT_ACTIVITY_KEY,JSON.stringify(vaultActivityByAddress))}catch(e){}
+  }
+  function loadVaultActivity(){
+    try{
+      var saved=JSON.parse(localStorage.getItem(VAULT_ACTIVITY_KEY)||'{}');
+      vaultActivityByAddress=saved&&typeof saved==='object'?saved:{};
+    }catch(e){vaultActivityByAddress={}}
   }
   function saveWalletActivity(){
     try{localStorage.setItem(WALLET_ACTIVITY_KEY,JSON.stringify(walletActivity.slice(0,20)))}catch(e){}
@@ -801,10 +818,10 @@
   }
   function loadLiveVaults(){
     try{
-      var saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||localStorage.getItem('uriMoaWallet.liveVaults.v6')||'[]');
+      var saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
       if(Array.isArray(saved)&&saved.length){
         var existing={};vaults.forEach(function(v){existing[v.address]=true});
-        saved.forEach(function(v){if(v&&v.address&&!existing[v.address])vaults.push(v)});
+        saved.forEach(function(v){if(v&&v.address&&!existing[v.address]){delete v.activity;vaults.push(v)}});
       }
       var last=localStorage.getItem('uriMoaWallet.lastVault');
       if(isLiveAddress(last))ensureLiveVaultFromAddress(last);
@@ -823,10 +840,12 @@
     var found=null;
     vaults.forEach(function(v){if(v.address&&v.address.toLowerCase()===addr.toLowerCase())found=v});
     if(found){currentVault=found;return found}
-    var v={id:'v'+Date.now(),icon:'L',name:'Live Imported Vault',demo:false,desc:'Live vault · restored from chain address',bal:0,month:0,role:'Admin',hasAp:false,address:addr,
-      activity:[['Vault restored','Local record rebuilt · just now','0','p'],['Balance sync','Reading tUSDC from chain','0','p'],['Ready','Deposit or request payout','0','p']]};
+    var v={id:'v'+Date.now(),icon:'L',name:'Live Imported Vault',demo:false,desc:'Live vault · restored from chain address',bal:0,month:0,role:'Admin',hasAp:false,address:addr};
     vaults.push(v);
     currentVault=v;
+    var key=normAddr(addr);
+    if(key&&!vaultActivityByAddress[key])vaultActivityByAddress[key]=[['Vault restored','Local record rebuilt · just now','0','income']];
+    saveVaultActivity();
     saveLiveVaults();
     renderVaults();
     return v;
@@ -917,6 +936,7 @@
         ['RPC archive credits','Carol · 2 days ago','-10','m']
       ]}
   ];
+  loadVaultActivity();
   loadLiveVaults();
 
   function renderVaults(){
@@ -974,7 +994,8 @@
     var list=$('vaultActivityList');
     if(!list)return;
     list.innerHTML='';
-    var items=(v&&v.activity)||[];
+    var key=normAddr(v&&v.address);
+    var items=key?(vaultActivityByAddress[key]||[]):((v&&v.activity)||[]);
     if($('vaultActivityHint'))$('vaultActivityHint').textContent=items.length?'- '+items.length+' item(s)':'- no local activity yet';
     if(!items.length){
       list.innerHTML='<div class="ait" data-type="income"><div class="ai-ic p">+</div><div class="ai-info"><div class="ai-title">No activity yet</div><div class="ai-sub">Transactions for this vault will appear here</div></div><div class="ai-amt p">0</div></div>';
@@ -992,10 +1013,13 @@
   }
   function addVaultActivity(title,sub,amount,type){
     if(currentVault){
-      currentVault.activity=currentVault.activity||[];
-      currentVault.activity.unshift([title,sub,amount,type||'pending']);
-      currentVault.activity=currentVault.activity.slice(0,20);
+      var key=normAddr(currentVault.address);
+      if(!key)return;
+      vaultActivityByAddress[key]=vaultActivityByAddress[key]||[];
+      vaultActivityByAddress[key].unshift([title,sub,amount,type||'pending']);
+      vaultActivityByAddress[key]=vaultActivityByAddress[key].slice(0,20);
       renderVaultActivity(currentVault);
+      saveVaultActivity();
       saveLiveVaults();
     }
   }
@@ -1121,8 +1145,10 @@
         }catch(e){}
         chain.lastVault=created;
         try{localStorage.setItem('uriMoaWallet.lastVault',created)}catch(e){}
-        var newVault={id:'v'+Date.now(),icon:'C',name:name,demo:false,desc:'Live vault · waiting for first deposit',bal:0,month:0,role:'Admin',hasAp:false,address:created,
-          activity:[['Vault created','Contract deployed · just now','0','income']]};
+        var newVault={id:'v'+Date.now(),icon:'C',name:name,demo:false,desc:'Live vault · waiting for first deposit',bal:0,month:0,role:'Admin',hasAp:false,address:created};
+        var key=normAddr(created);
+        if(key)vaultActivityByAddress[key]=[['Vault created','Contract deployed · just now','0','income']];
+        saveVaultActivity();
         vaults.push(newVault);
         saveLiveVaults();
         renderVaults();
