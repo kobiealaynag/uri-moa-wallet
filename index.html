@@ -489,8 +489,8 @@
           </div>
         </div>
 
-        <div class="st">Activity <span class="hint">- 1 pending approval</span></div>
-        <div class="ail">
+        <div class="st">Activity <span class="hint" id="vaultActivityHint">- 1 pending approval</span></div>
+        <div class="ail" id="vaultActivityList">
           <div class="ait" data-type="income"><div class="ai-ic p">+</div><div class="ai-info"><div class="ai-title" id="act1Title">Group top-up</div><div class="ai-sub" id="act1Sub">Alice · Today</div></div><div class="ai-amt p" id="act1Amt">+100</div></div>
           <div class="ait" data-type="expense"><div class="ai-ic m">-</div><div class="ai-info"><div class="ai-title" id="act2Title">Train tickets</div><div class="ai-sub" id="act2Sub">Bob · Yesterday</div></div><div class="ai-amt m" id="act2Amt">-40</div></div>
           <div class="ait" data-type="expense"><div class="ai-ic m">-</div><div class="ai-info"><div class="ai-title" id="act3Title">Dinner split</div><div class="ai-sub" id="act3Sub">Carol · 2 days ago</div></div><div class="ai-amt m" id="act3Amt">-15</div></div>
@@ -581,7 +581,7 @@
         <button class="flt-chip" id="f-pending">Pending</button>
       </div>
       <div class="agl">Today</div>
-      <div class="ail">
+      <div class="ail" id="walletActivityList">
         <div class="ait" data-type="income"><div class="ai-ic p">+</div><div class="ai-info"><div class="ai-title">Faucet claim</div><div class="ai-sub">GIWA Sepolia Faucet</div></div><div class="ai-amt p">+1,000</div></div>
         <div class="ait" data-type="income"><div class="ai-ic p">+</div><div class="ai-info"><div class="ai-title">Group top-up</div><div class="ai-sub">Trip Split Vault</div></div><div class="ai-amt p">+100</div></div>
       </div>
@@ -700,7 +700,9 @@
   };
   var chain={provider:null,signer:null,address:'',lastVault:''};
   var currentVault=null;
-  var STORAGE_KEY='uriMoaWallet.liveVaults.v7';
+  var STORAGE_KEY='uriMoaWallet.liveVaults.v8';
+  var WALLET_ACTIVITY_KEY='uriMoaWallet.walletActivity.v8';
+  var walletActivity=[];
   function shortAddr(a){return a?a.slice(0,6)+'...'+a.slice(-4):'Not connected'}
   function explorerLink(hash){return (ONCHAIN_CONFIG.blockExplorerUrls[0]||'')+'/tx/'+hash}
   function walletChainParams(){
@@ -728,7 +730,7 @@
     chain.signer=await chain.provider.getSigner();
     chain.address=await chain.signer.getAddress();
     $('chainWallet').textContent=shortAddr(chain.address);
-    $('chainMode').textContent=(isConfigured('testUSDC')&&isConfigured('vaultFactory'))?'Live contracts configured · Build v7':'Wallet connected · contracts pending · Build v7';
+    $('chainMode').textContent=(isConfigured('testUSDC')&&isConfigured('vaultFactory'))?'Live contracts configured · Build v8':'Wallet connected · contracts pending · Build v8';
     return chain.signer;
   }
   function setWalletBadge(connected,label){
@@ -757,7 +759,7 @@
     setWalletBadge(true,'Demo wallet · 0x71A2...cD04');
     if($('personalTokenBalance'))$('personalTokenBalance').textContent='--';
     if($('chainWallet'))$('chainWallet').textContent=chain.address;
-    if($('chainMode'))$('chainMode').textContent='Demo mode · wallet not detected · Build v7';
+    if($('chainMode'))$('chainMode').textContent='Demo mode · wallet not detected · Build v8';
     setChainStatus(msg||'Demo mode ready');
     showToast('Demo Mode',label+' opened without wallet extension','w');
   }
@@ -787,6 +789,15 @@
   }
   function saveLiveVaults(){
     try{localStorage.setItem(STORAGE_KEY,JSON.stringify(vaults.filter(function(v){return !v.demo})))}catch(e){}
+  }
+  function saveWalletActivity(){
+    try{localStorage.setItem(WALLET_ACTIVITY_KEY,JSON.stringify(walletActivity.slice(0,20)))}catch(e){}
+  }
+  function loadWalletActivity(){
+    try{
+      var saved=JSON.parse(localStorage.getItem(WALLET_ACTIVITY_KEY)||'[]');
+      walletActivity=Array.isArray(saved)?saved:[];
+    }catch(e){walletActivity=[]}
   }
   function loadLiveVaults(){
     try{
@@ -956,41 +967,60 @@
       document.querySelector('.ap-sub').textContent=v.approval.sub;
       document.querySelector('.ap-amt').textContent=v.approval.amount;
     }
-    if(v.activity){
-      $('act1Title').textContent=v.activity[0][0]; $('act1Sub').textContent=v.activity[0][1]; $('act1Amt').textContent=v.activity[0][2];
-      $('act2Title').textContent=v.activity[1][0]; $('act2Sub').textContent=v.activity[1][1]; $('act2Amt').textContent=v.activity[1][2];
-      $('act3Title').textContent=v.activity[2][0]; $('act3Sub').textContent=v.activity[2][1]; $('act3Amt').textContent=v.activity[2][2];
-    }
+    renderVaultActivity(v);
     showPage('vault-detail');
   }
-  function addVaultActivity(title,sub,amount,type){
-    var list=document.querySelector('#panel-overview .ail');
+  function renderVaultActivity(v){
+    var list=$('vaultActivityList');
     if(!list)return;
-    var row=document.createElement('div');
-    row.className='ait';
-    row.dataset.type=type||'pending';
-    var icon=type==='income'?'+':type==='expense'?'-':'!';
-    var cls=type==='income'?'p':type==='expense'?'m':'w';
-    row.innerHTML='<div class="ai-ic '+cls+'">'+icon+'</div><div class="ai-info"><div class="ai-title">'+title+'</div><div class="ai-sub">'+sub+'</div></div><div class="ai-amt '+(type==='income'?'p':type==='pending'?'w':'m')+'">'+amount+'</div>';
-    list.insertBefore(row,list.firstChild);
+    list.innerHTML='';
+    var items=(v&&v.activity)||[];
+    if($('vaultActivityHint'))$('vaultActivityHint').textContent=items.length?'- '+items.length+' item(s)':'- no local activity yet';
+    if(!items.length){
+      list.innerHTML='<div class="ait" data-type="income"><div class="ai-ic p">+</div><div class="ai-info"><div class="ai-title">No activity yet</div><div class="ai-sub">Transactions for this vault will appear here</div></div><div class="ai-amt p">0</div></div>';
+      return;
+    }
+    items.slice(0,8).forEach(function(it){
+      var row=document.createElement('div');
+      var type=it[3]||'pending';
+      var icon=type==='income'?'+':type==='expense'?'-':'!';
+      var cls=type==='income'?'p':type==='expense'?'m':'w';
+      row.className='ait';row.dataset.type=type;
+      row.innerHTML='<div class="ai-ic '+cls+'">'+icon+'</div><div class="ai-info"><div class="ai-title">'+it[0]+'</div><div class="ai-sub">'+it[1]+'</div></div><div class="ai-amt '+(type==='income'?'p':type==='pending'?'w':'m')+'">'+it[2]+'</div>';
+      list.appendChild(row);
+    });
+  }
+  function addVaultActivity(title,sub,amount,type){
     if(currentVault){
       currentVault.activity=currentVault.activity||[];
       currentVault.activity.unshift([title,sub,amount,type||'pending']);
-      currentVault.activity=currentVault.activity.slice(0,3);
+      currentVault.activity=currentVault.activity.slice(0,20);
+      renderVaultActivity(currentVault);
       saveLiveVaults();
     }
   }
   function addGlobalActivity(title,sub,amount,type){
-    var lists=document.querySelectorAll('#page-activity .ail');
-    var list=lists&&lists[0];
+    walletActivity.unshift([title,sub,amount,type||'income']);
+    walletActivity=walletActivity.slice(0,20);
+    saveWalletActivity();
+    renderWalletActivity();
+  }
+  function renderWalletActivity(){
+    var list=$('walletActivityList');
     if(!list)return;
+    list.innerHTML='';
+    var items=walletActivity.length?walletActivity:[
+      ['Faucet claim','GIWA Sepolia Faucet','+1,000','income']
+    ];
+    items.forEach(function(it){
     var row=document.createElement('div');
-    row.className='ait';
-    row.dataset.type=type||'income';
+    var type=it[3]||'income';
+    row.className='ait';row.dataset.type=type;
     var icon=type==='income'?'+':type==='expense'?'-':'!';
     var cls=type==='income'?'p':type==='expense'?'m':'w';
-    row.innerHTML='<div class="ai-ic '+cls+'">'+icon+'</div><div class="ai-info"><div class="ai-title">'+title+'</div><div class="ai-sub">'+sub+'</div></div><div class="ai-amt '+cls+'">'+amount+'</div>';
-    list.insertBefore(row,list.firstChild);
+    row.innerHTML='<div class="ai-ic '+cls+'">'+icon+'</div><div class="ai-info"><div class="ai-title">'+it[0]+'</div><div class="ai-sub">'+it[1]+'</div></div><div class="ai-amt '+cls+'">'+it[2]+'</div>';
+    list.appendChild(row);
+    });
   }
 
   // CONNECT FLOW
@@ -1092,7 +1122,7 @@
         chain.lastVault=created;
         try{localStorage.setItem('uriMoaWallet.lastVault',created)}catch(e){}
         var newVault={id:'v'+Date.now(),icon:'C',name:name,demo:false,desc:'Live vault · waiting for first deposit',bal:0,month:0,role:'Admin',hasAp:false,address:created,
-          activity:[['Ready for deposit','Contract deployed · just now','0','p'],['No payout yet','Create a request after deposit','0','m'],['Settlement open','Equal refund rule locked','0','m']]};
+          activity:[['Vault created','Contract deployed · just now','0','income']]};
         vaults.push(newVault);
         saveLiveVaults();
         renderVaults();
@@ -1142,7 +1172,6 @@
         if(!r)return;
         if(currentVault){currentVault.desc='Live vault · funded on-chain';}
         addVaultActivity('Vault deposit','You · just now','+'+amount,'income');
-        addGlobalActivity('Vault deposit',(currentVault?currentVault.name:'Shared Vault')+' · just now','+'+amount,'income');
         refreshPersonalBalance();
         refreshVaultBalance(currentVault);
         renderVaults();
@@ -1184,7 +1213,7 @@
       sendTx('Request payout',async function(signer){
         var vaultContract=new ethers.Contract(vault,ABIS.vault,signer);
         return await vaultContract.requestPayout(recv,ethers.parseUnits(String(amt),ONCHAIN_CONFIG.tokenDecimals),pur);
-      }).then(function(r){if(r){addVaultActivity(pur+' pending approval','You · just now','-'+amt,'pending');addGlobalActivity('Payout requested',(currentVault?currentVault.name:'Shared Vault')+' · just now','-'+amt,'pending');saveLiveVaults()}});
+      }).then(function(r){if(r){addVaultActivity(pur+' pending approval','You · just now','-'+amt,'pending');saveLiveVaults()}});
       return;
     }
     if(amt>50){
@@ -1241,6 +1270,8 @@
   });
 
   // INIT
+  loadWalletActivity();
+  renderWalletActivity();
   renderVaults();
   autoReconnect();
 </script>
