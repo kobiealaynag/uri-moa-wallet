@@ -49,11 +49,3 @@ Personal funds stay private. Shared funds follow transparent, enforceable rules.
 - `ONCHAIN_SETUP.md` — On-chain interaction guide
 - `deployments.giwa-sepolia.json` — Deployment records
 
-## Team
-
-**Sora Unit**  
-A two-person team of Chinese builders based in Japan.
-
-## License
-
-MIT
