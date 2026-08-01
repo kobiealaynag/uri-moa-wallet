@@ -691,8 +691,8 @@
     rpcUrls:['https://sepolia-rpc.giwa.io'],
     blockExplorerUrls:['https://sepolia-explorer.giwa.io'],
     nativeCurrency:{name:'GIWA Sepolia ETH',symbol:'ETH',decimals:18},
-    testUSDC:'0xb999CdA0Da5D2534F8e6d020557D3bb40adB6F66',          // Fill after deploying UriMoaTestUSDC
-    vaultFactory:'0x32DE7f4872d666eDF6042439C37b275bEB27bc28',      // Fill after deploying SharedVaultFactory
+    testUSDC:'0xa86Af5ABB6588d7245ebDfE22f4A15a87196FD3e',          // Fill after deploying UriMoaTestUSDC
+    vaultFactory:'0x80095d51204ada708AB8af6f00B52c15A93EC019',      // Fill after deploying SharedVaultFactory
     tokenDecimals:6
   };
   var ABIS={
@@ -914,7 +914,7 @@
       return receipt;
     }catch(err){
       var msg=(err&&err.shortMessage)||err.message||String(err);
-      if(msg.indexOf('missing revert data')>=0)msg='交易被合约拒绝。常见原因：不是金库创建者钱包，或者这是旧合约创建的金库。请切回创建者钱包；旧金库需要用最新合约重新创建。';
+      if(msg.indexOf('missing revert data')>=0)msg='Transaction rejected. Use the wallet that created this vault, or create a new vault with the latest deployed contract.';
       setChainStatus(label+' · failed');
       showToast(label,msg,'w');
     }
@@ -1383,11 +1383,11 @@
         var vaultContract=new ethers.Contract(currentVault.address,ABIS.vault,signer);
         try{
           var owner=await vaultContract.owner();
-          if(normAddr(owner)!==normAddr(chain.address))throw new Error('只有金库创建者可以邀请成员。请切换到创建这个金库的钱包。');
+          if(normAddr(owner)!==normAddr(chain.address))throw new Error('Only the vault creator can invite members. Switch to the wallet that created this vault.');
         }catch(readErr){
           var readMsg=(readErr&&readErr.message)||String(readErr);
-          if(readMsg.indexOf('只有金库创建者')>=0)throw readErr;
-          throw new Error('这个金库像是旧合约创建的，不能使用新版邀请确认。请重新部署最新合约后创建新金库。');
+          if(readMsg.indexOf('Only the vault creator')>=0)throw readErr;
+          throw new Error('This vault looks like it was created by an older contract. Redeploy the latest contract, then create a new vault.');
         }
         return await vaultContract.inviteMember(addr,makeAdmin);
       }).then(function(receipt){if(receipt)finish()});

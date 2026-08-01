@@ -1,7 +1,7 @@
 {
   "network": "GIWA Sepolia",
   "chainId": 91342,
-  "uriMoaTestUSDC": "0x248f08dfad7E5Ed7Ef2398cc2d65569DF02f19Cf",
-  "sharedVaultFactory": "0x832B63771c3f9bDe3E0A33f51be00058749d5D63",
-  "deployedAt": "2026-07-31T22:03:43.569Z"
+  "uriMoaTestUSDC": "0xa86Af5ABB6588d7245ebDfE22f4A15a87196FD3e",
+  "sharedVaultFactory": "0x80095d51204ada708AB8af6f00B52c15A93EC019",
+  "deployedAt": "2026-08-01T09:29:07.216Z"
 }
