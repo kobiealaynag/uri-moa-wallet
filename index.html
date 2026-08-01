@@ -11,9 +11,9 @@
 
   /* ===== TOP BAR ===== */
   .topbar{position:fixed;top:0;left:0;right:0;height:68px;background:rgba(15,20,22,0.94);backdrop-filter:blur(12px);border-bottom:1px solid #2A3438;display:flex;align-items:center;padding:0 24px;z-index:100;gap:16px}
-  .topbar .logo{display:flex;align-items:center;gap:11px;font-weight:800;font-size:17px;letter-spacing:-0.01em}
-  .topbar .lm{width:44px;height:44px;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;overflow:visible;box-shadow:none}
-  .topbar .lm img{width:44px;height:44px;object-fit:contain}
+  .topbar .logo{display:flex;align-items:center;gap:13px;font-weight:800;font-size:18px;letter-spacing:-0.01em}
+  .topbar .lm{width:56px;height:56px;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;overflow:visible;box-shadow:none}
+  .topbar .lm img{width:56px;height:56px;object-fit:contain}
   .topbar .np{font-size:11px;padding:5px 10px;border-radius:12px;background:rgba(94,200,181,0.1);color:#5EC8B5;border:1px solid rgba(94,200,181,0.2);font-weight:600}
   .topbar .sp{flex:1}
   .topbar .bal{display:none}
@@ -353,8 +353,6 @@
   <div class="bal" id="topBal">-- tUSDC</div>
   <div class="wallet-status" id="walletStatus"><span class="wallet-dot"></span><span id="walletStatusText">Wallet disconnected</span></div>
   <button class="disconnect-btn" id="btnTopDisconnect" style="display:none">Disconnect</button>
-  <div class="usr"><div class="av">W</div><span id="topWalletName">Wallet</span></div>
-  <span class="db">Verified</span>
   <button class="fb" id="btnFaucet">Faucet</button>
 </div>
 
@@ -444,9 +442,10 @@
           <option value="shared">Shared Budget - participants contribute</option>
           <option value="managed">Managed Budget - admin funds, members spend by permission</option>
         </select>
-        <label>Target Budget</label>
+        <div class="hint" id="fundModeHelp" style="margin-top:8px">Participants split the target budget and fund their own share.</div>
+        <label id="targetBudgetLabel">Target Budget</label>
         <input type="number" id="targetBudget" value="600">
-        <label>Target Members</label>
+        <label id="targetMembersLabel">Target Members</label>
         <input type="number" id="targetMembers" value="6" min="1" step="1">
         <label>Daily Spend Limit (per member)</label>
         <input type="number" id="dailyLimitInput" value="50">
@@ -733,7 +732,7 @@
   var selectedTemplate='trip';
   var vaultTemplates={
     trip:{icon:'T',name:'Trip Split Vault',desc:'Travel fund for hotels, tickets, meals, and refund settlement',fundingMode:'shared',target:600,targetMembers:6},
-    family:{icon:'F',name:'Family Budget Vault',desc:'Shared living budget for rent, utilities, groceries, and daily expenses',fundingMode:'shared',target:800,targetMembers:4},
+    family:{icon:'F',name:'Family Budget Vault',desc:'Managed budget for living costs, allowance, and approved daily expenses',fundingMode:'managed',target:800,targetMembers:4},
     defi:{icon:'D',name:'DeFi Research Group',desc:'Web3 research budget for on-chain data, RPC, analytics, and AI tools',fundingMode:'shared',target:300,targetMembers:3},
     custom:{icon:'C',name:'Custom Vault',desc:'Custom shared vault with your own budget and member target',fundingMode:'shared',target:0,targetMembers:2}
   };
@@ -1187,9 +1186,18 @@
     $('fundModeBadge').textContent=mode==='managed'?'Managed Budget':'Shared Budget';
     if(mode==='managed'){
       $('fundTitle').textContent='Budget Control';
-      $('fundHint').textContent='Funded by admin. Members do not need to contribute.';
+      var pendingTotal=pendingPayoutTotal(v);
+      var available=Math.max(0,bal-pendingTotal);
+      var planned=Math.max(1,Number(v.targetMembers||v.memberCount||names.length||1));
+      $('fundHint').textContent='Target '+fmtDisplay(target)+' tUSDC · funded '+fmtDisplay(bal)+' tUSDC · available '+fmtDisplay(available)+' tUSDC · '+planned+' planned member'+(planned>1?'s':'');
       $('fundFill').style.width=Math.min(100,target?bal/target*100:100)+'%';
-      grid.innerHTML='<div class="fund-item"><span>Funding Source</span><b>Admin wallet</b></div><div class="fund-item"><span>Members Contribution</span><b>Not required</b></div><div class="fund-item"><span>Monthly Limits</span><b>By role</b></div>';
+      grid.innerHTML=
+        '<div class="fund-item"><span>Funding source</span><b>Admin / sponsor</b></div>'+
+        '<div class="fund-item"><span>Member contribution</span><b>Not required</b></div>'+
+        '<div class="fund-item"><span>Available now</span><b>'+fmtDisplay(available)+' tUSDC</b></div>'+
+        '<div class="fund-item"><span>Pending requests</span><b>'+fmtDisplay(pendingTotal)+' tUSDC</b></div>'+
+        '<div class="fund-item"><span>Approval rule</span><b>By permission</b></div>'+
+        '<div class="fund-item"><span>Planned members</span><b>'+planned+'</b></div>';
       return;
     }
     var count=Math.max(1,Number(v.targetMembers||v.memberCount||names.length||1));
@@ -1454,11 +1462,27 @@
     $('fundMode').value=tpl.fundingMode;
     $('targetBudget').value=tpl.target;
     $('targetMembers').value=tpl.targetMembers;
+    updateCreateModeCopy();
+  }
+  function updateCreateModeCopy(){
+    var mode=($('fundMode')&&$('fundMode').value)||'shared';
+    if(!$('fundModeHelp'))return;
+    if(mode==='managed'){
+      $('fundModeHelp').textContent='Admin or sponsor funds this vault. Members do not split deposits; they request spending by permission.';
+      $('targetBudgetLabel').textContent='Budget Pool Target';
+      $('targetMembersLabel').textContent='Planned Members';
+    }else{
+      $('fundModeHelp').textContent='Participants split the target budget and fund their own share.';
+      $('targetBudgetLabel').textContent='Target Budget';
+      $('targetMembersLabel').textContent='Target Members';
+    }
   }
   $('tpl1').onclick=function(){selectTemplate('trip','tpl1')};
   $('tpl2').onclick=function(){selectTemplate('family','tpl2')};
   $('tpl3').onclick=function(){selectTemplate('defi','tpl3')};
   $('tpl4').onclick=function(){selectTemplate('custom','tpl4')};
+  $('fundMode').onchange=updateCreateModeCopy;
+  updateCreateModeCopy();
 
   // VAULT DETAIL HEADER
   $('btnBack').onclick=function(){showPage('vaults')};
