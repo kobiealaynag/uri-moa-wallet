@@ -1,0 +1,1784 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uri Moa Wallet - GIWA Sepolia MVP</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:#0F1416;color:#E8EEF0;overflow:hidden;-webkit-font-smoothing:antialiased;font-size:16px}
+
+  /* ===== TOP BAR ===== */
+  .topbar{position:fixed;top:0;left:0;right:0;height:68px;background:rgba(15,20,22,0.94);backdrop-filter:blur(12px);border-bottom:1px solid #2A3438;display:flex;align-items:center;padding:0 24px;z-index:100;gap:16px}
+  .topbar .logo{display:flex;align-items:center;gap:13px;font-weight:800;font-size:18px;letter-spacing:-0.01em}
+  .topbar .lm{width:56px;height:56px;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;overflow:visible;box-shadow:none}
+  .topbar .lm img{width:56px;height:56px;object-fit:contain}
+  .topbar .np{font-size:11px;padding:5px 10px;border-radius:12px;background:rgba(94,200,181,0.1);color:#5EC8B5;border:1px solid rgba(94,200,181,0.2);font-weight:600}
+  .topbar .sp{flex:1}
+  .topbar .bal{display:none}
+  .topbar .usr{display:flex;align-items:center;gap:8px;font-size:14px;color:#C4D0D3}
+  .topbar .av{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#2D8F7E,#5EC8B5);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
+  .topbar .db{font-size:12px;color:#5EC8B5;font-weight:700;padding:4px 9px;border-radius:4px;background:rgba(94,200,181,0.1);border:1px solid rgba(94,200,181,0.25);display:flex;align-items:center;gap:5px}
+  .topbar .db::before{content:"";width:5px;height:5px;border-radius:50%;background:#5EC8B5;display:inline-block;animation:pulse 2s infinite}
+  .topbar .fb{font-size:13px;padding:7px 14px;border-radius:7px;background:rgba(240,199,94,0.1);color:#F0C75E;border:1px solid rgba(240,199,94,0.25);cursor:pointer;font-weight:700;font-family:inherit;transition:all 0.2s}
+  .topbar .fb:hover{background:rgba(240,199,94,0.18)}
+  .wallet-status{display:flex;align-items:center;gap:8px;min-width:176px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,0.045);border:1px solid rgba(255,255,255,0.12);color:#AFC2C7;font-size:13px;font-weight:800;letter-spacing:-0.01em}
+  .wallet-status.connected{background:rgba(94,200,181,0.1);border-color:rgba(94,200,181,0.28);color:#DDFBF5}
+  .wallet-dot{width:8px;height:8px;border-radius:50%;background:#6A7478;box-shadow:0 0 0 3px rgba(255,255,255,0.04)}
+  .wallet-status.connected .wallet-dot{background:#5EC8B5;box-shadow:0 0 0 3px rgba(94,200,181,0.12)}
+  .disconnect-btn{font-size:13px;padding:7px 12px;border-radius:7px;background:rgba(224,90,90,0.08);color:#FFB0B0;border:1px solid rgba(224,90,90,0.28);cursor:pointer;font-weight:800;font-family:inherit;transition:all 0.2s}
+  .disconnect-btn:hover{background:rgba(224,90,90,0.16);border-color:rgba(224,90,90,0.45)}
+
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  /* ===== APP LAYOUT ===== */
+  .app{display:flex;height:100vh}
+
+  /* ===== SIDEBAR ===== */
+  .sb{width:220px;flex-shrink:0;background:#1A2226;border-right:1px solid #2A3438;padding:82px 12px 14px;display:flex;flex-direction:column}
+  .sb .ns{font-size:9px;color:#5A6569;text-transform:uppercase;letter-spacing:0.1em;padding:14px 12px 5px;font-weight:600}
+  .ni{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:8px;font-size:13px;font-weight:600;color:#A5B6BB;cursor:pointer;border:none;background:transparent;text-align:left;font-family:inherit;position:relative;width:100%;transition:all 0.15s}
+  .ni:hover{background:rgba(255,255,255,0.04);color:#E8EEF0}
+  .ni.act{background:rgba(94,200,181,0.1);color:#5EC8B5;font-weight:600}
+  .ni .nb{margin-left:auto;font-size:9px;background:rgba(232,168,56,0.14);color:#E8A838;padding:1px 6px;border-radius:10px;font-weight:600}
+  .sb .ft{margin-top:auto;font-size:9px;color:#5A6569;padding:10px 12px;line-height:1.7;border-top:1px solid #2A3438;margin-top:auto}
+
+  /* ===== MAIN ===== */
+  .main{flex:1;overflow-y:auto;padding:86px 32px 32px}
+  .page{max-width:1040px;margin:0 auto;display:none}
+  .page.act{display:block}
+
+  .ph{margin-bottom:24px}
+  .ph h1{font-size:28px;font-weight:800;margin-bottom:7px;letter-spacing:-0.01em}
+  .ph p{font-size:15px;color:#C0CDD0;line-height:1.55}
+
+  /* ===== WALLET CARD ===== */
+  .wc{background:#1A2226;border:1px solid #2A3438;border-radius:16px;padding:26px 28px;margin-bottom:20px;position:relative;overflow:hidden}
+  .wc::before{content:"";position:absolute;top:0;right:0;width:200px;height:200px;background:radial-gradient(circle,rgba(240,199,94,0.04) 0%,transparent 70%);pointer-events:none}
+  .wc .wl{font-size:12px;color:#B4C3C7;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px}
+  .wc .wb{font-size:34px;font-weight:800;color:#F0C75E;margin-bottom:2px;letter-spacing:-0.02em}
+  .wc .wb .u{font-size:14px;color:#8A9BA0;font-weight:500}
+  .wc .ws{font-size:14px;color:#B1C0C4;margin-bottom:18px}
+  .wc .wa{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* ===== BUTTONS ===== */
+  .btn{font-family:inherit;font-size:14px;font-weight:700;padding:11px 20px;border-radius:9px;border:none;cursor:pointer;transition:all 0.15s}
+  .btn:hover{opacity:0.88;transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn-p{background:#5EC8B5;color:#0F1416;font-weight:700;box-shadow:0 2px 8px rgba(94,200,181,0.2)}
+  .btn-o{background:transparent;color:#5EC8B5;border:1px solid #5EC8B5}
+  .btn-gh{background:rgba(255,255,255,0.05);color:#E8EEF0}
+  .btn-gh:hover{background:rgba(255,255,255,0.08)}
+  .btn-sm{padding:9px 16px;font-size:13px}
+  .btn-lg{padding:14px 32px;font-size:15px;font-weight:700;border-radius:12px}
+
+  /* ===== SECTION TITLE ===== */
+  .st{font-size:17px;font-weight:800;color:#E8EEF0;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .st .hint{font-size:14px;color:#9DADB2;font-weight:500}
+
+  /* ===== VAULT CARDS ===== */
+  .vl{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+  .vc{background:#1A2226;border:1px solid #2A3438;border-radius:14px;padding:20px 22px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:16px;position:relative}
+  .vc:hover{border-color:rgba(94,200,181,0.35);background:#1E272B}
+  .vc .vi{width:42px;height:42px;border-radius:11px;background:rgba(94,200,181,0.1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;color:#5EC8B5;font-weight:700}
+  .vc .vm{flex:1}
+  .vc .vn{font-size:14px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+  .vc .vd{font-size:12px;color:#A6B6BA;line-height:1.45}
+  .vc .vs{display:flex;gap:20px;flex-shrink:0}
+  .vc .vst{text-align:right}
+  .vc .vst .vlbl{font-size:9px;color:#5A6569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;font-weight:600}
+  .vc .vst .vval{font-size:16px;font-weight:700;color:#E8EEF0;letter-spacing:-0.01em}
+  .vc .vst .vval.g{color:#F0C75E}
+  .vc .vst .vval.m{color:#5EC8B5}
+  .vc .arr{color:#5A6569;font-size:16px;flex-shrink:0;transition:transform 0.2s}
+  .vc:hover .arr{color:#5EC8B5;transform:translateX(3px)}
+  .vc .badge{position:absolute;top:10px;right:36px;font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(232,168,56,0.14);color:#E8A838;font-weight:600}
+
+  /* ===== DEMO TAG ===== */
+  .demo-tag{font-size:8px;padding:1px 6px;border-radius:3px;background:rgba(255,255,255,0.04);color:#5A6569;font-weight:500;text-transform:uppercase;letter-spacing:0.04em}
+
+  /* ===== EMPTY STATE ===== */
+  .empty{text-align:center;padding:56px 24px;background:#1A2226;border:1px dashed #2A3438;border-radius:16px;margin-bottom:20px}
+  .empty .em-ic{font-size:44px;margin-bottom:14px;opacity:0.7}
+  .empty h3{font-size:16px;font-weight:700;margin-bottom:8px}
+  .empty p{font-size:12px;color:#8A9BA0;margin-bottom:18px;line-height:1.6;max-width:340px;margin-left:auto;margin-right:auto}
+  .empty .eh{font-size:11px;color:#5A6569;margin-bottom:14px}
+
+  /* ===== CREATE FORM ===== */
+  .cf{background:#1A2226;border:1px solid #2A3438;border-radius:16px;padding:28px;max-width:560px}
+  .cf label{font-size:11px;color:#8A9BA0;font-weight:600;display:block;margin-bottom:5px;margin-top:16px}
+  .cf input{width:100%;background:rgba(255,255,255,0.04);border:1px solid #2A3438;border-radius:9px;padding:11px 14px;font-size:13px;color:#E8EEF0;outline:none;font-family:inherit;transition:border-color 0.2s}
+  .cf input:focus{border-color:#5EC8B5;background:rgba(94,200,181,0.04)}
+  .tg{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+  .tc{background:rgba(255,255,255,0.03);border:1px solid #2A3438;border-radius:10px;padding:14px;cursor:pointer;color:#E8EEF0;text-align:left;font-family:inherit;transition:all 0.2s}
+  .tc:hover{border-color:rgba(94,200,181,0.3);background:rgba(94,200,181,0.04)}
+  .tc.sel{border-color:#5EC8B5;background:rgba(94,200,181,0.1);box-shadow:0 0 0 2px rgba(94,200,181,0.15)}
+  .tc .ti{font-size:20px;margin-bottom:5px}
+  .tc .tn{font-size:12px;font-weight:600;margin-bottom:2px}
+  .tc .td{font-size:10px;color:#8A9BA0;line-height:1.3}
+
+  /* ===== VAULT HEADER ===== */
+  .vh{display:flex;align-items:center;gap:14px;margin:18px 0 24px;position:relative}
+  .vh .vhi{width:46px;height:46px;border-radius:12px;background:rgba(94,200,181,0.1);display:flex;align-items:center;justify-content:center;font-size:20px;color:#5EC8B5;font-weight:700}
+  .vh .vhn h2{font-size:22px;font-weight:800;letter-spacing:-0.01em}
+  .vh .vhn p{font-size:13px;color:#B0C0C4;margin-top:4px}
+  .vh .vha{margin-left:auto;display:flex;gap:8px}
+  .vh .back{position:absolute;top:-28px;left:0;font-size:11px;color:#8A9BA0;cursor:pointer;font-family:inherit;background:none;border:none;padding:4px 0}
+  .vh .back:hover{color:#5EC8B5}
+
+  /* ===== STAT CARDS ===== */
+  .sr{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+  .sc{background:#1A2226;border:1px solid #2A3438;border-radius:12px;padding:16px 18px}
+  .sc .sl{font-size:10px;color:#84939A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;font-weight:700}
+  .sc .sv{font-size:25px;font-weight:800;color:#E8EEF0;letter-spacing:-0.02em}
+  .sc .sv.g{color:#F0C75E}
+  .sc .sv.m{color:#5EC8B5}
+  .addr-card{display:flex;align-items:center;gap:12px;background:rgba(94,200,181,0.045);border:1px solid rgba(94,200,181,0.18);border-radius:12px;padding:12px 14px;margin:-10px 0 20px}
+  .addr-card .addr-main{flex:1}
+  .addr-card .addr-label{font-size:9px;color:#5EC8B5;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;margin-bottom:3px}
+  .addr-card .addr-text{font-size:12px;color:#E8EEF0;font-weight:700}
+  .addr-card .addr-note{font-size:12px;color:#A9B8BC;margin-top:4px}
+
+  /* ===== TABS ===== */
+  .tabs{display:flex;gap:2px;margin-bottom:20px;border-bottom:1px solid #2A3438}
+  .tab{padding:9px 16px;font-size:12px;font-weight:500;color:#8A9BA0;cursor:pointer;border:none;background:transparent;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s}
+  .tab:hover{color:#E8EEF0}
+  .tab.act{color:#5EC8B5;border-bottom-color:#5EC8B5;font-weight:600}
+
+  /* ===== APPROVAL CARD ===== */
+  .ap{background:linear-gradient(135deg,rgba(232,168,56,0.06),rgba(232,168,56,0.015));border:2px solid #E8A838;border-radius:16px;padding:22px 24px;margin-bottom:20px;position:relative;animation:apGlow 3s ease-in-out infinite}
+  @keyframes apGlow{0%,100%{box-shadow:0 0 0 rgba(232,168,56,0)}50%{box-shadow:0 0 24px rgba(232,168,56,0.08)}}
+  .ap .ap-head{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+  .ap .ap-ic{width:36px;height:36px;border-radius:50%;background:rgba(232,168,56,0.14);color:#E8A838;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;font-weight:700}
+  .ap .ap-title{font-size:15px;font-weight:700}
+  .ap .ap-sub{font-size:11px;color:#8A9BA0;margin-top:2px}
+  .ap .ap-amt{font-size:28px;font-weight:800;color:#E8A838;margin-bottom:6px;letter-spacing:-0.02em}
+  .ap .ap-prog{height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin:10px 0}
+  .ap .ap-prog-fill{height:100%;width:66%;background:linear-gradient(90deg,#E8A838,#F5C870);border-radius:3px}
+  .ap .ap-actions{display:flex;gap:10px;margin-top:14px}
+  .ap .ap-btn{font-size:14px;padding:11px 24px;border-radius:10px;font-weight:700;border:none;cursor:pointer;font-family:inherit;transition:all 0.15s}
+  .ap .ap-btn.primary{background:#5EC8B5;color:#0F1416;box-shadow:0 2px 12px rgba(94,200,181,0.25)}
+  .ap .ap-btn.primary:hover{opacity:0.88;transform:translateY(-1px)}
+  .ap .ap-btn.ghost{background:rgba(255,255,255,0.06);color:#E8EEF0}
+  .ap .ap-btn.ghost:hover{background:rgba(255,255,255,0.1)}
+  .ap .ap-tag{position:absolute;top:16px;right:18px;font-size:9px;padding:3px 9px;border-radius:10px;background:rgba(232,168,56,0.14);color:#E8A838;font-weight:700;text-transform:uppercase;letter-spacing:0.04em}
+
+  /* ===== ACTIVITY LIST ===== */
+  .flt{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+  .flt-chip{font-size:11px;padding:5px 13px;border-radius:16px;background:rgba(255,255,255,0.04);color:#8A9BA0;border:1px solid #2A3438;cursor:pointer;font-family:inherit;transition:all 0.15s}
+  .flt-chip:hover{background:rgba(255,255,255,0.08)}
+  .flt-chip.act{background:rgba(94,200,181,0.1);color:#5EC8B5;border-color:rgba(94,200,181,0.3)}
+
+  .agl{font-size:10px;color:#5A6569;text-transform:uppercase;letter-spacing:0.08em;margin:16px 0 8px;font-weight:600}
+  .ail{display:flex;flex-direction:column;gap:6px}
+  .ait{display:flex;align-items:center;gap:12px;background:#1A2226;border:1px solid #2A3438;border-radius:11px;padding:12px 15px;transition:all 0.15s}
+  .ait:hover{background:#1E272B}
+  .ait .ai-ic{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;font-weight:800}
+  .ait .ai-ic.p{background:rgba(94,200,181,0.12);color:#5EC8B5}
+  .ait .ai-ic.m{background:rgba(255,255,255,0.06);color:#8A9BA0}
+  .ait .ai-ic.w{background:rgba(232,168,56,0.14);color:#E8A838}
+  .ait .ai-info{flex:1}
+  .ait .ai-title{font-size:14px;font-weight:700}
+  .ait .ai-sub{font-size:11px;color:#5A6569;margin-top:3px}
+  .ait .ai-amt{font-size:14px;font-weight:700;letter-spacing:-0.01em}
+  .ait .ai-amt.p{color:#5EC8B5}
+  .ait .ai-amt.m{color:#E8EEF0}
+  .ait .ai-amt.w{color:#E8A838}
+  .ait .ai-tag{font-size:9px;padding:1px 7px;border-radius:4px;background:rgba(232,168,56,0.14);color:#E8A838;font-weight:600;margin-left:8px}
+
+  /* ===== MEMBERS ===== */
+  .ml{display:flex;flex-direction:column;gap:6px}
+  .mr{display:flex;align-items:center;gap:14px;background:#1A2226;border:1px solid #2A3438;border-radius:11px;padding:13px 16px}
+  .mr .mav{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+  .mr .minfo{flex:1}
+  .mr .mn{font-size:13px;font-weight:600}
+  .mr .mrole{font-size:10px;color:#8A9BA0;margin-top:2px}
+  .mr .mb{font-size:9px;padding:3px 8px;border-radius:5px;font-weight:600;display:flex;align-items:center;gap:4px}
+  .mr .mb.v{background:rgba(94,200,181,0.1);color:#5EC8B5;border:1px solid rgba(94,200,181,0.25)}
+  .mr .mb.u{background:rgba(255,255,255,0.04);color:#5A6569;border:1px solid #2A3438}
+  .mr .mlim{font-size:12px;color:#E8EEF0;font-weight:700;text-align:right}
+  .mr .mlim .mlbl{font-size:9px;color:#5A6569;display:block;font-weight:500}
+
+  .perms-box{background:#1A2226;border:1px solid #2A3438;border-radius:12px;padding:16px 18px;font-size:11px;color:#8A9BA0;line-height:2;margin-top:14px}
+  .perms-box .pb-title{font-weight:700;color:#E8EEF0;margin-bottom:6px;font-size:12px}
+
+  /* ===== RULES ===== */
+  .rl{display:flex;flex-direction:column;gap:6px;margin-bottom:18px}
+  .ri{display:flex;align-items:center;gap:14px;background:#1A2226;border:1px solid #2A3438;border-radius:11px;padding:14px 18px;cursor:pointer;transition:all 0.15s}
+  .ri:hover{background:#1E272B;border-color:rgba(94,200,181,0.2)}
+  .ri .ri-ic{display:none}
+  .ri .ri-info{flex:1}
+  .ri .ri-label{font-size:12px;font-weight:600}
+  .ri .ri-desc{font-size:10px;color:#8A9BA0;margin-top:2px}
+  .ri .ri-val{font-size:12px;color:#E8EEF0;font-weight:600}
+  .ri .ri-ar{color:#5A6569;font-size:14px}
+
+  .sec-box{background:#1A2226;border:1px solid #2A3438;border-radius:12px;padding:18px;font-size:11px;color:#8A9BA0;line-height:2;margin-top:10px}
+  .sec-box .sb-title{font-weight:700;color:#E8EEF0;margin-bottom:6px;font-size:12px}
+  .settle-box{background:linear-gradient(135deg,rgba(94,200,181,0.07),rgba(94,200,181,0.02));border:1px solid rgba(94,200,181,0.22);border-radius:12px;padding:18px;margin-top:14px}
+  .settle-box .settle-title{font-size:13px;font-weight:700;color:#E8EEF0;margin-bottom:5px}
+  .settle-box .settle-sub{font-size:11px;color:#8A9BA0;line-height:1.6;margin-bottom:12px}
+  .settle-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .settle-item{background:rgba(255,255,255,0.035);border:1px solid #2A3438;border-radius:9px;padding:10px}
+  .settle-item span{display:block;font-size:9px;color:#5A6569;margin-bottom:4px}
+  .settle-item b{font-size:13px;color:#F0C75E}
+  .rule-strip{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0 18px}
+  .rule-mini{background:#151E21;border:1px solid rgba(94,200,181,0.2);border-radius:11px;padding:12px 14px}
+  .rule-mini span{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#5EC8B5;font-weight:800;margin-bottom:5px}
+  .rule-mini b{font-size:18px;color:#E8EEF0}
+  .rule-mini small{color:#8FA3A8;font-size:12px;margin-left:4px}
+  .fund-box{background:#151E21;border:1px solid rgba(94,200,181,0.22);border-radius:13px;padding:16px;margin:0 0 18px}
+  .fund-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}
+  .fund-title{font-size:14px;font-weight:900;color:#E8EEF0}
+  .fund-mode{font-size:11px;color:#5EC8B5;border:1px solid rgba(94,200,181,0.3);border-radius:999px;padding:4px 9px;background:rgba(94,200,181,0.08)}
+  .fund-progress{height:8px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;margin:8px 0 12px}
+  .fund-fill{height:100%;background:linear-gradient(90deg,#5EC8B5,#F0C75E);border-radius:999px}
+  .fund-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .fund-item{background:rgba(255,255,255,.035);border:1px solid #2A3438;border-radius:10px;padding:10px}
+  .fund-item span{display:block;font-size:10px;color:#8A9BA0;margin-bottom:4px}
+  .fund-item b{font-size:13px;color:#F0C75E}
+  .chain-panel{background:#1A2226;border:1px solid #2A3438;border-radius:12px;padding:14px 16px;margin:16px 0 20px}
+  .chain-panel .cp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .chain-panel .cp-title{font-size:12px;font-weight:700;color:#E8EEF0}
+  .chain-panel .cp-mode{font-size:9px;color:#F0C75E;background:rgba(240,199,94,0.1);border:1px solid rgba(240,199,94,0.22);border-radius:999px;padding:3px 8px}
+  .chain-panel .cp-row{display:flex;align-items:center;gap:10px;font-size:11px;color:#8A9BA0;padding:8px 0;border-top:1px solid rgba(255,255,255,0.05)}
+  .chain-panel .cp-row:first-of-type{border-top:0}
+  .chain-panel .cp-row b{color:#E8EEF0;min-width:120px}
+  .chain-panel .cp-row a{color:#5EC8B5;text-decoration:none;font-weight:700;word-break:break-all}
+
+  /* ===== MODAL ===== */
+  .mo-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+  .mo-ov.act{display:flex}
+  .mo{background:#1A2226;border:1px solid #2A3438;border-radius:18px;padding:28px;width:420px;max-width:92vw;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.4)}
+  .mo h2{font-size:17px;font-weight:700;margin-bottom:4px;letter-spacing:-0.01em}
+  .mo .mo-sub{font-size:11px;color:#8A9BA0;margin-bottom:18px}
+  .mo label{font-size:11px;color:#8A9BA0;font-weight:600;display:block;margin-bottom:5px;margin-top:12px}
+  .mo input{width:100%;background:rgba(255,255,255,0.04);border:1px solid #2A3438;border-radius:9px;padding:10px 14px;font-size:13px;color:#E8EEF0;outline:none;font-family:inherit;transition:border-color 0.2s;margin-bottom:2px}
+  .mo input:focus{border-color:#5EC8B5;background:rgba(94,200,181,0.04)}
+  .mo-act{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+  .mo-cl{position:absolute;top:14px;right:14px;background:none;border:none;color:#8A9BA0;font-size:18px;cursor:pointer;font-family:inherit;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px}
+  .mo-cl:hover{color:#E8EEF0;background:rgba(255,255,255,0.06)}
+
+  /* ===== TOAST ===== */
+  .ts{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:10px;max-width:min(520px,calc(100vw - 40px))}
+  .t{display:flex;align-items:flex-start;gap:12px;background:#1A2226;border:1px solid #2A3438;border-left:4px solid #5EC8B5;border-radius:10px;padding:14px 16px;font-size:14px;color:#E8EEF0;min-width:360px;max-width:520px;line-height:1.45;transition:opacity 0.3s,transform 0.3s;animation:tIn 0.3s ease-out}
+  @keyframes tIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+  .t.g{border-left-color:#F0C75E}
+  .t.w{border-left-color:#E8A838}
+  .t .t-ic{font-size:18px;width:22px;text-align:center;line-height:1.2}
+  .t .t-info{flex:1}
+  .t .t-info .t-title{font-weight:800;font-size:14px}
+  .t .t-info .t-desc{font-size:13px;color:#C0CDD0;margin-top:3px;line-height:1.45}
+
+  /* ===== CONNECT PAGE ===== */
+  .connect-page{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:40px}
+  .connect-page .cp-icon{width:150px;height:150px;border-radius:0;background:transparent;display:flex;align-items:center;justify-content:center;margin-bottom:18px;box-shadow:none;overflow:visible}
+  .connect-page .cp-icon img{width:150px;height:150px;object-fit:contain}
+  .connect-page .cp-name{font-size:28px;font-weight:800;margin-bottom:8px;letter-spacing:-0.02em}
+  .connect-page .cp-built{font-size:10px;color:#5EC8B5;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:28px}
+  .connect-page .cp-tag{font-size:26px;font-weight:700;line-height:1.45;margin-bottom:14px;max-width:440px;letter-spacing:-0.02em}
+  .connect-page .cp-sub{font-size:12px;color:#8A9BA0;margin-bottom:32px;max-width:400px;line-height:1.6}
+  .connect-page .cp-btn{font-size:15px;padding:15px 44px;border-radius:12px;background:#5EC8B5;color:#0F1416;font-weight:700;border:none;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(94,200,181,0.25);transition:all 0.2s}
+  .connect-page .cp-btn:hover{opacity:0.88;transform:translateY(-2px);box-shadow:0 6px 20px rgba(94,200,181,0.35)}
+  .connect-page .cp-net{font-size:10px;color:#5A6569;margin-top:24px;display:flex;align-items:center;gap:6px}
+  .connect-page .cp-dot{width:6px;height:6px;border-radius:50%;background:#5EC8B5;animation:pulse 2s infinite}
+
+  .act-row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+
+  /* ===== DEMO READABILITY OVERRIDES ===== */
+  .vc .vn{font-size:17px;font-weight:800;margin-bottom:5px}
+  .vc .vd{font-size:14px;color:#C2D0D3;line-height:1.5}
+  .vc .vst .vlbl{font-size:11px;color:#9AAAAE;font-weight:800;margin-bottom:6px}
+  .vc .vst .vval{font-size:18px;font-weight:800}
+  .demo-tag{font-size:10px;color:#8E9EA3}
+  .cf label,.mo label{font-size:14px;color:#C1CED1}
+  .cf input,.mo input{font-size:16px;padding:14px 16px}
+  .tc .tn{font-size:16px;font-weight:800}
+  .tc .td{font-size:13px;color:#B4C3C7}
+  .vh .back{font-size:14px;color:#B9C7CB}
+  .tab{font-size:15px;font-weight:700;color:#AEBEC2;padding:12px 18px}
+  .ap .ap-title{font-size:18px;font-weight:800}
+  .ap .ap-sub{font-size:14px;color:#C0CDD0}
+  .ap .ap-tag{font-size:11px}
+  .agl{font-size:13px;color:#9DADB2}
+  .ait{padding:15px 17px}
+  .ait .ai-title{font-size:17px;font-weight:800}
+  .ait .ai-sub{font-size:14px;color:#B5C4C8}
+  .ait .ai-amt{font-size:18px;font-weight:800}
+  .mr .mn{font-size:16px;font-weight:800}
+  .mr .mrole{font-size:13px;color:#B5C4C8}
+  .mr .mb{font-size:12px}
+  .mr .mlim{font-size:15px}
+  .perms-box,.sec-box{font-size:14px;color:#B8C6CA;line-height:1.9}
+  .perms-box .pb-title,.sec-box .sb-title{font-size:16px}
+  .ri .ri-label{font-size:15px;font-weight:800}
+  .ri .ri-desc{font-size:13px;color:#B5C4C8}
+  .ri .ri-val{font-size:15px}
+  .chain-panel{opacity:.72}
+  .chain-panel .cp-title{font-size:15px}
+  .chain-panel .cp-row{font-size:14px}
+  .chain-panel .cp-mode{font-size:11px}
+  .flt-chip{font-size:14px;padding:7px 15px}
+
+  @media(max-width:768px){
+    .sb{display:none}
+    .main{padding:58px 14px 14px}
+    .sr{grid-template-columns:1fr}
+    .vc{flex-wrap:wrap}
+    .vc .vs{gap:12px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== CONNECT PAGE ===== -->
+<div class="page act" id="page-connect">
+  <div class="connect-page">
+    <div class="cp-icon"><img src="uri-moa-wallet-logo.png" alt="Uri Moa Wallet"></div>
+    <div class="cp-name">Uri Moa Wallet</div>
+    <div class="cp-built">Built on GIWA</div>
+    <div class="cp-tag">Money works better<br>when we manage it together.</div>
+    <div class="cp-sub">Personal funds stay personal. Shared funds follow clear rules.</div>
+    <button class="cp-btn" id="btnConnect">Connect Wallet</button>
+    <div class="cp-net"><span class="cp-dot"></span> GIWA Sepolia Testnet &middot; Local preview</div>
+  </div>
+</div>
+
+<!-- ===== TOP BAR ===== -->
+<div class="topbar" id="topBar" style="display:none">
+  <div class="logo"><div class="lm"><img src="uri-moa-wallet-logo.png" alt=""></div>Uri Moa Wallet</div>
+  <div class="sp"></div>
+  <div class="bal" id="topBal">-- tUSDC</div>
+  <span class="np">GIWA Sepolia</span>
+  <div class="wallet-status" id="walletStatus"><span class="wallet-dot"></span><span id="walletStatusText">Wallet disconnected</span></div>
+  <button class="disconnect-btn" id="btnTopDisconnect" style="display:none">Disconnect</button>
+  <button class="fb" id="btnFaucet">Faucet</button>
+</div>
+
+<div class="app" id="appMain" style="display:none">
+
+  <nav class="sb">
+    <div class="ns">Wallet</div>
+    <button class="ni act" id="nav-home">Home</button>
+    <button class="ni" id="nav-vaults">Shared Vaults <span class="nb" id="navBadge">1</span></button>
+    <div class="ns">Manage</div>
+    <button class="ni" id="nav-activity">Activity</button>
+    <button class="ni" id="nav-settings">Settings</button>
+    <div class="ft">Network<br>GIWA Sepolia<br>0x71A2...cD04</div>
+  </nav>
+
+  <div class="main">
+
+    <!-- HOME -->
+    <div class="page" id="page-home">
+      <div class="ph">
+        <h1>My Wallet</h1>
+        <p>Your personal balance. Only visible to you in-app.</p>
+      </div>
+      <div class="wc">
+        <div class="wl">Personal Wallet</div>
+        <div class="wb"><span id="personalTokenBalance">--</span> <span class="u">tUSDC</span></div>
+        <div class="ws">App-private · Chain data is public</div>
+        <div class="wa">
+          <button class="btn btn-p" id="btnSend">Send</button>
+          <button class="btn btn-o" id="btnReceive">Receive</button>
+        </div>
+      </div>
+      <div class="chain-panel">
+        <div class="cp-head"><div class="cp-title">On-chain demo status</div><div class="cp-mode" id="chainMode">Contracts not configured</div></div>
+        <div class="cp-row"><b>Wallet</b><span id="chainWallet">Not connected</span></div>
+        <div class="cp-row"><b>Last action</b><span id="chainAction">Waiting for wallet connection</span></div>
+        <div class="cp-row"><b>Last tx</b><span id="chainTx">No transaction yet</span></div>
+      </div>
+      <div class="st">My Wallet Activity</div>
+      <div class="flt" style="margin-bottom:12px">
+        <button class="flt-chip act" id="hw-all">All</button>
+        <button class="flt-chip" id="hw-income">Income</button>
+        <button class="flt-chip" id="hw-expense">Expense</button>
+      </div>
+      <div class="ail" id="homeWalletActivityList"></div>
+    </div>
+
+    <!-- VAULTS LIST -->
+    <div class="page" id="page-vaults">
+      <div class="ph">
+        <h1>Shared Vaults</h1>
+        <p>Multi-party fund pools with roles, limits, and on-chain approval.</p>
+      </div>
+      <div style="margin-bottom:18px;display:flex;gap:10px;align-items:center">
+        <button class="btn btn-p btn-sm" id="btnCreateNew">+ Create New Vault</button>
+        <span style="font-size:11px;color:#5A6569" id="vaultCount"></span>
+      </div>
+      <div class="vl" id="vaultList"></div>
+      <div class="empty" id="emptyState" style="display:none">
+        <div class="em-ic">U</div>
+        <h3>No shared vaults yet</h3>
+        <p>Create your first shared fund pool to manage money together with teammates, friends, or family.</p>
+        <div class="eh">Pick a template to get started in seconds</div>
+        <button class="btn btn-p" id="btnEmptyCreate">+ Create Your First Vault</button>
+      </div>
+    </div>
+
+    <!-- CREATE VAULT -->
+    <div class="page" id="page-create">
+      <button class="back" id="btnBackCreate">&larr; Back to Shared Vaults</button>
+      <div class="ph">
+        <h1>Create Shared Vault</h1>
+        <p>Pick a template or start from scratch.</p>
+      </div>
+      <div class="cf">
+        <label>Choose Template</label>
+        <div class="tg">
+          <button class="tc sel" id="tpl1"><div class="ti">T</div><div class="tn">Trip Split</div><div class="td">Travel group expenses</div></button>
+          <button class="tc" id="tpl2"><div class="ti">F</div><div class="tn">Family Budget</div><div class="td">Shared living costs</div></button>
+          <button class="tc" id="tpl3"><div class="ti">D</div><div class="tn">DeFi Research</div><div class="td">Tools and data budget</div></button>
+          <button class="tc" id="tpl4"><div class="ti">C</div><div class="tn">Custom</div><div class="td">Set your own rules</div></button>
+        </div>
+        <label>Vault Name</label>
+        <input type="text" id="vaultName" value="Trip Split Vault">
+        <label>Budget Mode</label>
+        <select id="fundMode" style="width:100%;padding:13px 14px;border-radius:10px;background:#20292D;border:1px solid #2A3438;color:#E8EEF0;font-family:inherit;font-weight:700">
+          <option value="shared">Shared Budget - participants contribute</option>
+          <option value="managed">Managed Budget - admin funds, members spend by permission</option>
+        </select>
+        <div class="hint" id="fundModeHelp" style="margin-top:8px">Participants split the target budget and fund their own share.</div>
+        <label id="targetBudgetLabel">Target Budget</label>
+        <input type="number" id="targetBudget" value="600">
+        <label id="targetMembersLabel">Target Members</label>
+        <input type="number" id="targetMembers" value="6" min="1" step="1">
+        <label>Daily Spend Limit (per member)</label>
+        <input type="number" id="dailyLimitInput" value="50">
+        <label>Large Expense Threshold</label>
+        <input type="number" id="largeThresholdInput" value="100">
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <button class="btn btn-gh btn-sm" id="btnCancelCreate">&larr; Back to Shared Vaults</button>
+          <button class="btn btn-p btn-sm" id="btnDeploy">Deploy Vault</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VAULT DETAIL -->
+    <div class="page" id="page-vault-detail">
+      <div class="vh">
+        <button class="back" id="btnBack">&larr; Back to Shared Vaults</button>
+        <div class="vhi" id="vhIcon">C</div>
+        <div class="vhn">
+          <h2 id="vdName">Trip Split Vault</h2>
+          <p id="vdDesc">Travel group expenses and shared refunds · 1 member</p>
+        </div>
+        <div class="vha">
+          <button class="btn btn-o btn-sm" id="btnInvite">+ Invite</button>
+          <button class="btn btn-o btn-sm" id="btnCopyVault">Copy Vault Address</button>
+          <button class="btn btn-o btn-sm" id="btnNewExpenseTop">Request Payout</button>
+          <button class="btn btn-p btn-sm" id="btnDeposit">Deposit</button>
+        </div>
+      </div>
+
+      <div class="sr">
+        <div class="sc"><div class="sl">Balance</div><div class="sv g" id="vsBal">380 tUSDC</div></div>
+        <div class="sc"><div class="sl">This Month</div><div class="sv" id="vsMonth">120 spent</div></div>
+        <div class="sc"><div class="sl">Your Role</div><div class="sv m" id="vsRole">Admin</div></div>
+      </div>
+
+      <div class="addr-card">
+        <div class="addr-main">
+          <div class="addr-label">Vault receive address</div>
+          <div class="addr-text" id="vaultAddr">0xVault...C001</div>
+          <div class="addr-note">Funds go directly into this project contract, not into the admin's personal wallet.</div>
+        </div>
+        <button class="btn btn-o btn-sm" id="btnCopyVault2">Copy</button>
+      </div>
+
+      <div class="rule-strip">
+        <div class="rule-mini"><span>Daily Spend Limit / Member</span><b>50</b><small>tUSDC</small></div>
+        <div class="rule-mini"><span>Large Expense Threshold</span><b>100</b><small>tUSDC</small></div>
+      </div>
+
+      <div class="fund-box" id="fundBox">
+        <div class="fund-head"><div><div class="fund-title" id="fundTitle">Budget Progress</div><div class="hint" id="fundHint">Target and participant contribution status</div></div><span class="fund-mode" id="fundModeBadge">Shared Budget</span></div>
+        <div class="fund-progress"><div class="fund-fill" id="fundFill" style="width:0%"></div></div>
+        <div class="fund-grid" id="fundGrid"></div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab act" id="tab-overview">Overview</button>
+        <button class="tab" id="tab-vault-activity">Activity</button>
+        <button class="tab" id="tab-members">Members</button>
+        <button class="tab" id="tab-rules">Rules</button>
+      </div>
+
+      <!-- OVERVIEW -->
+      <div id="panel-overview">
+        <div id="pendingPayoutList"></div>
+        <div class="ap" id="apCard" style="display:none">
+          <span class="ap-tag">Needs Action</span>
+          <div class="ap-head">
+            <div class="ap-ic">!</div>
+            <div>
+              <div class="ap-title">Hotel deposit - 80 tUSDC</div>
+              <div class="ap-sub">Waiting for a real payout request</div>
+            </div>
+          </div>
+          <div class="ap-amt">80 tUSDC</div>
+          <div class="ap-prog"><div class="ap-prog-fill"></div></div>
+          <div class="ap-actions">
+            <button class="ap-btn ghost" id="btnDecline">Decline</button>
+            <button class="ap-btn primary" id="btnApprove">Review & Approve</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ACTIVITY -->
+      <div id="panel-vault-activity" style="display:none">
+        <div class="st">Activity <span class="hint" id="vaultActivityHint">- no local activity yet</span></div>
+        <div class="ail" id="vaultActivityList">
+          <div class="ait" data-type="income"><div class="ai-ic p">+</div><div class="ai-info"><div class="ai-title">No activity yet</div><div class="ai-sub">Transactions for this vault will appear here</div></div><div class="ai-amt p">0</div></div>
+        </div>
+      </div>
+
+      <!-- MEMBERS -->
+      <div id="panel-members" style="display:none">
+        <div class="st">Members <span class="hint" id="memberHint">- 1 accepted member</span></div>
+        <div class="ml" id="memberList">
+          <div class="empty"><h3>Owner is the first member</h3><p>Invited wallets appear here only after they accept the invite.</p></div>
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn btn-o btn-sm" id="btnInvite2">+ Invite Member</button>
+        </div>
+        <div class="perms-box">
+          <div class="pb-title">Who can approve what?</div>
+          Owner/Admin is a member by default<br>
+          Invited wallets are pending until they accept<br>
+          Every payout requires an Admin approval<br>
+          Pending payouts reserve vault funds
+        </div>
+      </div>
+
+      <!-- RULES -->
+      <div id="panel-rules" style="display:none">
+        <div class="st">Vault Rules <span class="hint">- locked in smart contract</span></div>
+        <div class="rl">
+          <div class="ri" data-rule="Large Expense Threshold: 100 tUSDC"><div class="ri-info"><div class="ri-label">Large Expense Threshold</div><div class="ri-desc">Above this requires multi-admin approval</div></div><span class="ri-val">100 tUSDC</span><span class="ri-ar">›</span></div>
+          <div class="ri" data-rule="Required Approvals: 2 Dojang-verified admins"><div class="ri-info"><div class="ri-label">Required Approvals</div><div class="ri-desc">Must be Dojang verified admins</div></div><span class="ri-val">2 admins</span><span class="ri-ar">›</span></div>
+          <div class="ri" data-rule="Settlement: Equal refund to each member"><div class="ri-info"><div class="ri-label">Settlement Rule</div><div class="ri-desc">Remaining funds are returned equally to members</div></div><span class="ri-val">Equal split</span><span class="ri-ar">›</span></div>
+          <div class="ri" data-rule="Vault Visibility: Members only"><div class="ri-info"><div class="ri-label">Vault Visibility</div><div class="ri-desc">Non-members see nothing</div></div><span class="ri-val">Members only</span><span class="ri-ar">›</span></div>
+          <div class="ri" data-rule="Admin Spend Limit: Same as members"><div class="ri-info"><div class="ri-label">Admin Spend Limit</div><div class="ri-desc">Admin also subject to limits</div></div><span class="ri-val">Same</span><span class="ri-ar">›</span></div>
+          <div class="ri" data-rule="Close Vault: 2-of-3 signatures"><div class="ri-info"><div class="ri-label">Close Vault</div><div class="ri-desc">Multi-party confirmation required</div></div><span class="ri-val">2-of-3 sigs</span><span class="ri-ar">›</span></div>
+        </div>
+        <div class="sec-box">
+          <div class="sb-title">Security Guarantees (anti-theft by design)</div>
+          -Admin CANNOT extract all funds at once<br>
+          -Admin spending also subject to limits<br>
+          -Large expenses / closing vault requires multi-party confirmation<br>
+          -Settlement rule locked at creation<br>
+          -All operations on-chain verifiable via Dojang
+        </div>
+        <div class="settle-box">
+          <div class="settle-title">Settle & Distribute</div>
+          <div class="settle-sub">When the project ends, the vault closes only after multi-party confirmation. Remaining funds are returned equally to each member.</div>
+          <div class="settle-grid" id="settleGrid">
+            <div class="settle-item"><span>Owner</span><b>0 tUSDC</b></div>
+          </div>
+          <button class="btn btn-p btn-sm" id="btnSettle">Settle & Distribute</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY -->
+    <div class="page" id="page-activity">
+      <div class="ph">
+        <h1>Activity</h1>
+        <p>All transactions across your wallet and shared vaults.</p>
+      </div>
+      <div class="flt">
+        <button class="flt-chip act" id="f-all">All</button>
+        <button class="flt-chip" id="f-income">Income</button>
+        <button class="flt-chip" id="f-expense">Expense</button>
+        <button class="flt-chip" id="f-pending">Pending</button>
+      </div>
+      <div class="agl">Today</div>
+      <div class="ail" id="walletActivityList">
+        <div class="ait" data-type="income"><div class="ai-ic p">+</div><div class="ai-info"><div class="ai-title">No wallet activity yet</div><div class="ai-sub">Send, receive, faucet, and vault deposits appear here</div></div><div class="ai-amt p">0</div></div>
+      </div>
+      <div class="agl">Yesterday</div>
+      <div class="ail">
+      </div>
+      <div class="agl">Pending Approval</div>
+      <div class="ail">
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="ph"><h1>Settings</h1><p>App preferences and account settings.</p></div>
+      <div style="margin-bottom:24px">
+        <div class="st">Network</div>
+        <div class="rl">
+          <div class="ri"><div class="ri-info"><div class="ri-label">Current Network</div><div class="ri-desc">GIWA Sepolia Testnet - Karst</div></div><span class="ri-val" style="color:#5EC8B5">Connected</span><span class="ri-ar">›</span></div>
+          <div class="ri"><div class="ri-info"><div class="ri-label">Stablecoin</div><div class="ri-desc">Uri Moa Test USDC on GIWA Sepolia</div></div><span class="ri-val">tUSDC</span><span class="ri-ar">›</span></div>
+        </div>
+      </div>
+      <div style="margin-bottom:24px">
+        <div class="st">Account</div>
+        <div class="rl">
+          <div class="ri"><div class="ri-info"><div class="ri-label">Dojang Identity</div><div class="ri-desc">Verified by Upbit - EAS</div></div><span class="ri-val" style="color:#5EC8B5">Verified</span><span class="ri-ar">›</span></div>
+          <div class="ri"><div class="ri-info"><div class="ri-label">Wallet Address</div><div class="ri-desc">0x71A2...cD04</div></div><span class="ri-val">Copy</span><span class="ri-ar">›</span></div>
+        </div>
+      </div>
+      <div style="margin-bottom:24px">
+        <div class="st">Preferences</div>
+        <div class="rl">
+          <div class="ri"><div class="ri-info"><div class="ri-label">Theme</div><div class="ri-desc">Dark mode</div></div><span class="ri-val">Dark</span><span class="ri-ar">›</span></div>
+          <div class="ri"><div class="ri-info"><div class="ri-label">Language</div><div class="ri-desc">Display language</div></div><span class="ri-val">English</span><span class="ri-ar">›</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="st">Session</div>
+        <div class="rl">
+          <div class="ri" id="btnLogout" style="cursor:pointer"><div class="ri-info"><div class="ri-label" style="color:#E05A5A">Disconnect Wallet</div><div class="ri-desc">End session</div></div><span class="ri-ar">›</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: New Expense -->
+<div class="mo-ov" id="modal-newExpense">
+  <div class="mo">
+    <button class="mo-cl" id="btnCloseModal">X</button>
+    <h2>New Expense</h2>
+    <div class="mo-sub">Daily request limit applies to the requester. Invalid addresses and over-limit requests are blocked.</div>
+    <label>Amount (tUSDC)</label>
+    <input type="number" value="40" id="expAmt">
+    <label>Purpose</label>
+    <input type="text" value="Dinner split" id="expPur">
+    <label>Recipient Address</label>
+    <input type="text" value="" placeholder="0x..." id="expRecv">
+    <label>Recipient Name (optional)</label>
+    <input type="text" value="" placeholder="Optional label" id="expRecvName">
+    <div class="mo-act">
+      <button class="btn btn-gh btn-sm" id="btnCancelExp">Cancel</button>
+      <button class="btn btn-p btn-sm" id="btnSubmitExp">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Connect Wallet -->
+<div class="mo-ov" id="modal-connect">
+  <div class="mo">
+    <button class="mo-cl" id="btnCloseConnect">X</button>
+    <h2>Connect Wallet</h2>
+    <div class="mo-sub">Choose a wallet to continue.</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
+      <button class="btn btn-gh" id="btnMetaMask" style="justify-content:flex-start;text-align:left;padding:14px 18px;font-size:13px">MetaMask</button>
+      <button class="btn btn-gh" id="btnWalletConnect" style="justify-content:flex-start;text-align:left;padding:14px 18px;font-size:13px">WalletConnect</button>
+      <button class="btn btn-gh" id="btnGIWAWallet" style="justify-content:flex-start;text-align:left;padding:14px 18px;font-size:13px">GIWA Wallet</button>
+    </div>
+  </div>
+</div>
+
+<div class="ts" id="toastStack"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+<script>
+  function $(id){return document.getElementById(id)}
+  var ONCHAIN_CONFIG={
+    chainIdHex:'0x164ce',
+    chainName:'GIWA Sepolia',
+    rpcUrls:['https://sepolia-rpc.giwa.io'],
+    blockExplorerUrls:['https://sepolia-explorer.giwa.io'],
+    nativeCurrency:{name:'GIWA Sepolia ETH',symbol:'ETH',decimals:18},
+    testUSDC:'0xa86Af5ABB6588d7245ebDfE22f4A15a87196FD3e',          // Fill after deploying UriMoaTestUSDC
+    vaultFactory:'0x80095d51204ada708AB8af6f00B52c15A93EC019',      // Fill after deploying SharedVaultFactory
+    tokenDecimals:6
+  };
+  var ABIS={
+    testUSDC:[
+      'function claim() external',
+      'function approve(address spender,uint256 amount) external returns (bool)',
+      'function balanceOf(address account) external view returns (uint256)'
+    ],
+    factory:[
+      'function createVault(string name,address token,uint256 dailyLimit,uint256 largeThreshold) external returns (address)',
+      'event VaultCreated(address indexed vault,address indexed owner,string name)'
+    ],
+    vault:[
+      'function deposit(uint256 amount) external',
+      'function inviteMember(address member,bool makeAdmin) external',
+      'function acceptInvite() external',
+      'function getMembers() external view returns (address[])',
+      'function owner() external view returns (address)',
+      'function admins(address account) external view returns (bool)',
+      'function pendingInvites(address account) external view returns (bool)',
+      'function requestPayout(address recipient,uint256 amount,string purpose) external returns (uint256)',
+      'function approvePayout(uint256 payoutId) external',
+      'function rejectPayout(uint256 payoutId) external',
+      'function availableBalance() external view returns (uint256)',
+      'function payoutCount() external view returns (uint256)',
+      'function payouts(uint256 id) external view returns (address requester,address recipient,uint256 amount,string purpose,bool approved,bool executed,bool rejected)',
+      'function settleEqual() external'
+    ]
+  };
+  var chain={provider:null,signer:null,address:'',lastVault:''};
+  var currentVault=null;
+  var STORAGE_KEY='uriMoaWallet.liveVaults.v23';
+  var VAULT_ACTIVITY_KEY='uriMoaWallet.vaultActivityByAddress.v24';
+  var WALLET_ACTIVITY_BASE='uriMoaWallet.walletActivity.v24';
+  var walletActivity=[];
+  var vaultActivityByAddress={};
+  var selectedTemplate='trip';
+  var vaultTemplates={
+    trip:{icon:'T',name:'Trip Split Vault',desc:'Travel fund for hotels, tickets, meals, and refund settlement',fundingMode:'shared',target:600,targetMembers:6},
+    family:{icon:'F',name:'Family Budget Vault',desc:'Managed budget for living costs, allowance, and approved daily expenses',fundingMode:'managed',target:800,targetMembers:4},
+    defi:{icon:'D',name:'DeFi Research Group',desc:'Web3 research budget for on-chain data, RPC, analytics, and AI tools',fundingMode:'shared',target:300,targetMembers:3},
+    custom:{icon:'C',name:'Custom Vault',desc:'Custom shared vault with your own budget and member target',fundingMode:'shared',target:0,targetMembers:2}
+  };
+  function shortAddr(a){return a?a.slice(0,6)+'...'+a.slice(-4):'Not connected'}
+  function explorerLink(hash){return (ONCHAIN_CONFIG.blockExplorerUrls[0]||'')+'/tx/'+hash}
+  function walletChainParams(){
+    return {
+      chainId:ONCHAIN_CONFIG.chainIdHex,
+      chainName:ONCHAIN_CONFIG.chainName,
+      rpcUrls:ONCHAIN_CONFIG.rpcUrls,
+      blockExplorerUrls:ONCHAIN_CONFIG.blockExplorerUrls,
+      nativeCurrency:ONCHAIN_CONFIG.nativeCurrency
+    };
+  }
+  function setChainStatus(action,hash){
+    if($('chainAction'))$('chainAction').textContent=action||'Ready';
+    if(hash&&$('chainTx'))$('chainTx').innerHTML='<a target="_blank" rel="noreferrer" href="'+explorerLink(hash)+'">'+hash+'</a>';
+  }
+  function isConfigured(name){return !!ONCHAIN_CONFIG[name]&&ONCHAIN_CONFIG[name].startsWith('0x')&&ONCHAIN_CONFIG[name].length===42}
+  async function ensureWallet(){
+    if(!window.ethereum)throw new Error('No injected wallet found. Please open with MetaMask or GIWA Wallet.');
+    await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:ONCHAIN_CONFIG.chainIdHex}]}).catch(async function(err){
+      if(err&&err.code===4902){
+        await window.ethereum.request({method:'wallet_addEthereumChain',params:[walletChainParams()]});
+      }else throw err;
+    });
+    chain.provider=new ethers.BrowserProvider(window.ethereum);
+    chain.signer=await chain.provider.getSigner();
+    chain.address=await chain.signer.getAddress();
+    $('chainWallet').textContent=shortAddr(chain.address);
+    $('chainMode').textContent=(isConfigured('testUSDC')&&isConfigured('vaultFactory'))?'Live contracts configured - Build v22':'Wallet connected - contracts pending - Build v22';
+    return chain.signer;
+  }
+  function setWalletBadge(connected,label){
+    var box=$('walletStatus'), text=$('walletStatusText'), btn=$('btnTopDisconnect');
+    if(!box||!text||!btn)return;
+    box.classList.toggle('connected',!!connected);
+    text.textContent=connected ? label : 'Wallet disconnected';
+    btn.style.display=connected ? 'inline-flex' : 'none';
+  }
+  function disconnectWallet(){
+    chain.provider=null;chain.signer=null;chain.address='0x71A2...cD04';
+    if($('personalTokenBalance'))$('personalTokenBalance').textContent='--';
+    setWalletBadge(false);
+    showToast('Disconnected','Wallet disconnected','w');
+    $('page-connect').classList.add('act');
+    $('topBar').style.display='none';
+    $('appMain').style.display='none';
+  }
+  function enterDemoMode(label,msg){
+    closeModal('connect');
+    $('page-connect').classList.remove('act');
+    $('topBar').style.display='flex';
+    $('appMain').style.display='flex';
+    showPage('home');
+    chain.address='0x71A2...cD04';
+    setWalletBadge(true,'Demo wallet · 0x71A2...cD04');
+    if($('personalTokenBalance'))$('personalTokenBalance').textContent='--';
+    if($('chainWallet'))$('chainWallet').textContent=chain.address;
+    if($('chainMode'))$('chainMode').textContent='Demo mode · wallet not detected · Build v22';
+    setChainStatus(msg||'Demo mode ready');
+    showToast('Demo Mode',label+' opened without wallet extension','w');
+  }
+  async function refreshPersonalBalance(){
+    if(!$('personalTokenBalance'))return;
+    if(!chain.signer||!chain.address||!isConfigured('testUSDC')){
+      $('personalTokenBalance').textContent='--';
+      return;
+    }
+    try{
+      var token=new ethers.Contract(ONCHAIN_CONFIG.testUSDC,ABIS.testUSDC,chain.signer);
+      var bal=await token.balanceOf(chain.address);
+      $('personalTokenBalance').textContent=fmtToken(bal);
+    }catch(e){
+      $('personalTokenBalance').textContent='--';
+    }
+  }
+  function fmtDisplay(n){return Number(n||0).toLocaleString('en-US',{maximumFractionDigits:6})}
+  function fmtToken(raw){
+    var formatted=ethers.formatUnits(raw,ONCHAIN_CONFIG.tokenDecimals);
+    var n=Number(formatted);
+    return Number.isFinite(n)?fmtDisplay(n):formatted;
+  }
+  function cleanAmountInput(v){return String(v||'').trim().replace(/,/g,'')}
+  function currentVaultBalanceNumber(){
+    var raw=($('vsBal')&&$('vsBal').textContent||'0').replace('tUSDC','').replace(/,/g,'').trim();
+    var n=Number(raw);return Number.isFinite(n)?n:0;
+  }
+  async function readTokenBalance(addr){
+    if(!chain.signer||!addr||!addr.startsWith('0x')||addr.length!==42||!isConfigured('testUSDC'))return null;
+    var token=new ethers.Contract(ONCHAIN_CONFIG.testUSDC,ABIS.testUSDC,chain.signer);
+    return await token.balanceOf(addr);
+  }
+  function normAddr(a){return isLiveAddress(a)?a.toLowerCase():''}
+  function saveLiveVaults(){
+    try{
+      var clean=vaults.filter(function(v){return !v.demo}).map(function(v){
+        return {id:v.id,icon:v.icon,name:v.name,demo:false,desc:v.desc,bal:v.bal,month:v.month,role:v.role,hasAp:v.hasAp,address:v.address,approval:v.approval||null,pendingPayouts:v.pendingPayouts||[],dailyUsage:v.dailyUsage||{},dailyLimit:v.dailyLimit||50,largeThreshold:v.largeThreshold||100,memberCount:v.memberCount||1,targetMembers:v.targetMembers||v.memberCount||1,ownerAddress:v.ownerAddress||chain.address||'',members:v.members||[],pendingInvites:v.pendingInvites||[],fundingMode:v.fundingMode||'shared',target:v.target||0,contributions:v.contributions||[]};
+      });
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(clean));
+    }catch(e){}
+  }
+  function saveVaultActivity(){
+    try{localStorage.setItem(VAULT_ACTIVITY_KEY,JSON.stringify(vaultActivityByAddress))}catch(e){}
+  }
+  function loadVaultActivity(){
+    try{
+      var saved=JSON.parse(localStorage.getItem(VAULT_ACTIVITY_KEY)||'{}');
+      vaultActivityByAddress=saved&&typeof saved==='object'?saved:{};
+    }catch(e){vaultActivityByAddress={}}
+  }
+  function walletActivityKey(){
+    var addr=normAddr(chain.address);
+    return WALLET_ACTIVITY_BASE+'.'+(addr||'disconnected');
+  }
+  function saveWalletActivity(){
+    try{localStorage.setItem(walletActivityKey(),JSON.stringify(walletActivity.slice(0,20)))}catch(e){}
+  }
+  function loadWalletActivity(){
+    try{
+      var saved=JSON.parse(localStorage.getItem(walletActivityKey())||'[]');
+      walletActivity=Array.isArray(saved)?saved:[];
+    }catch(e){walletActivity=[]}
+  }
+  function loadLiveVaults(){
+    try{
+      var saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
+      if(Array.isArray(saved)&&saved.length){
+        var existing={};vaults.forEach(function(v){existing[v.address]=true});
+        saved.forEach(function(v){if(v&&v.address&&!existing[v.address]){delete v.activity;if(!v.ownerAddress)v.ownerAddress=(v.members&&v.members[0])||chain.address||'';vaults.push(v)}});
+      }
+      var last=localStorage.getItem('uriMoaWallet.lastVault');
+      if(isLiveAddress(last))ensureLiveVaultFromAddress(last,false);
+    }catch(e){}
+  }
+  function isLiveAddress(a){return !!a&&a.startsWith('0x')&&a.length===42}
+  function getActiveVaultAddress(){
+    var a=$('vaultAddr')?$('vaultAddr').textContent.trim():'';
+    if(isLiveAddress(a))return a;
+    if(currentVault&&isLiveAddress(currentVault.address))return currentVault.address;
+    if(chain.lastVault&&isLiveAddress(chain.lastVault))return chain.lastVault;
+    return '';
+  }
+  function ensureLiveVaultFromAddress(addr,activate){
+    if(!isLiveAddress(addr))return null;
+    var found=null;
+    vaults.forEach(function(v){if(v.address&&v.address.toLowerCase()===addr.toLowerCase())found=v});
+    if(found){if(activate!==false)currentVault=found;return found}
+    var v={id:'v'+Date.now(),icon:'L',name:'Live Imported Vault',demo:false,desc:'Live vault - restored from chain address',bal:0,month:0,role:'Admin',hasAp:false,address:addr,memberCount:1,targetMembers:1,ownerAddress:chain.address||'0x71A2...cD04',members:[chain.address||'0x71A2...cD04'],pendingInvites:[],fundingMode:'shared',target:0,contributions:[],pendingPayouts:[],dailyUsage:{},dailyLimit:50,largeThreshold:100};
+    vaults.push(v);
+    currentVault=v;
+    var key=normAddr(addr);
+    if(key&&!vaultActivityByAddress[key])vaultActivityByAddress[key]=[['Vault restored','Local record rebuilt · just now','0','income']];
+    saveVaultActivity();
+    saveLiveVaults();
+    renderVaults();
+    return v;
+  }
+  async function refreshVaultBalance(v){
+    if(!v||v.demo||!v.address||!v.address.startsWith('0x')||v.address.length!==42)return;
+    try{
+      var raw=await readTokenBalance(v.address);
+      if(raw===null)return;
+      var text=fmtToken(raw);
+      v.bal=text;
+      if(currentVault&&currentVault.address===v.address&&$('vsBal'))$('vsBal').textContent=text+' tUSDC';
+      if(currentVault&&currentVault.address===v.address){renderSettlement(v);renderFunding(v);}
+      renderVaults();
+      saveLiveVaults();
+    }catch(e){}
+  }
+  async function sendTx(label,fn){
+    try{
+      var signer=await ensureWallet();
+      setChainStatus(label+' · waiting for signature');
+      var tx=await fn(signer);
+      setChainStatus(label+' · pending',tx.hash);
+      showToast(label,'Transaction submitted','w');
+      var receipt=await tx.wait();
+      setChainStatus(label+' · confirmed',receipt.hash);
+      showToast(label,'Confirmed on GIWA Sepolia','g');
+      refreshPersonalBalance();
+      return receipt;
+    }catch(err){
+      var msg=(err&&err.shortMessage)||err.message||String(err);
+      if(msg.indexOf('missing revert data')>=0)msg='Transaction rejected. Use the wallet that created this vault, or create a new vault with the latest deployed contract.';
+      setChainStatus(label+' · failed');
+      showToast(label,msg,'w');
+    }
+  }
+  function requireContracts(){
+    if(!isConfigured('testUSDC')||!isConfigured('vaultFactory')){
+      showToast('Contracts not configured','Deploy contracts, then fill ONCHAIN_CONFIG addresses in index.html','w');
+      setChainStatus('Contracts not configured');
+      return false;
+    }
+    return true;
+  }
+  function showPage(id){
+    var pages=document.querySelectorAll('.page');
+    for(var i=0;i<pages.length;i++)pages[i].classList.remove('act');
+    var navs=document.querySelectorAll('.ni');
+    for(var j=0;j<navs.length;j++)navs[j].classList.remove('act');
+    var p=$('page-'+id);
+    if(p)p.classList.add('act');
+    if(id==='vault-detail'||id==='create')nav=$('nav-vaults');
+    else nav=$('nav-'+id);
+    if(nav)nav.classList.add('act');
+    document.querySelector('.main').scrollTop=0;
+  }
+  function showToast(title,msg,type){
+    var s=$('toastStack');
+    var t=document.createElement('div');
+    t.className='t'+(type==='g'?' g':type==='w'?' w':'');
+    var ic=type==='g'?'?':type==='w'?'!':'i';
+    t.innerHTML='<span class="t-ic">'+ic+'</span><div class="t-info"><div class="t-title">'+title+'</div><div class="t-desc">'+msg+'</div></div>';
+    s.appendChild(t);
+    setTimeout(function(){t.style.opacity='0';setTimeout(function(){t.remove()},300)},3500);
+  }
+  function openModal(id){$('modal-'+id).classList.add('act')}
+  function closeModal(id){$('modal-'+id).classList.remove('act')}
+  function updateBadge(delta){
+    var b=$('navBadge');
+    var cur=parseInt(b.textContent)||0;
+    cur=Math.max(0,cur+delta);
+    b.textContent=cur;
+    b.style.display=cur>0?'inline':'none';
+  }
+
+  // VAULT DATA
+  var vaults=[];
+  loadVaultActivity();
+  loadLiveVaults();
+
+  function viewerAddress(){
+    return (chain.address&&String(chain.address).startsWith('0x'))?String(chain.address).toLowerCase():'demo';
+  }
+  function vaultOwner(v){
+    return String((v&&v.ownerAddress)||'').toLowerCase();
+  }
+  function addrListHas(list,addr){
+    if(!addr)return false;
+    return (list||[]).map(function(x){return String(x).toLowerCase()}).indexOf(String(addr).toLowerCase())>=0;
+  }
+  function vaultAccess(v){
+    var me=viewerAddress();
+    var isOwner=vaultOwner(v)===me;
+    var isMember=addrListHas(v&&v.members,me);
+    var isPending=addrListHas(v&&v.pendingInvites,me);
+    return {owner:isOwner,member:isMember,pending:isPending,accepted:isOwner||isMember};
+  }
+  function publicActor(addr){
+    return normAddr(addr)===normAddr(chain.address)?shortAddr(addr):shortAddr(addr);
+  }
+  function privateActor(addr){
+    return normAddr(addr)===normAddr(chain.address)?'You':shortAddr(addr);
+  }
+  function todayKey(){
+    return new Date().toISOString().slice(0,10);
+  }
+  function requesterDailyUsed(v,addr){
+    var key=todayKey()+':'+normAddr(addr);
+    return Number((v&&v.dailyUsage&&v.dailyUsage[key])||0);
+  }
+  function addRequesterDailyUsed(v,addr,amount){
+    if(!v)return;
+    v.dailyUsage=v.dailyUsage||{};
+    var key=todayKey()+':'+normAddr(addr);
+    v.dailyUsage[key]=requesterDailyUsed(v,addr)+Number(amount||0);
+  }
+  function validRecipient(addr){
+    return isLiveAddress(addr)&&normAddr(addr)!=='0x0000000000000000000000000000000000000000'&&normAddr(addr)!==normAddr(getActiveVaultAddress());
+  }
+  function roleForVault(v){
+    var access=vaultAccess(v);
+    return access.owner?'Admin':access.member?'Member':'Viewer';
+  }
+  function memberIndexFor(v,addr){
+    var list=(v&&v.members)||[];
+    for(var i=0;i<list.length;i++){if(normAddr(list[i])===normAddr(addr))return i}
+    return 0;
+  }
+  function canViewVault(v){
+    if(!v)return false;
+    if(v.demo)return true;
+    var access=vaultAccess(v);
+    return access.accepted||access.pending;
+  }
+  function visibleVaults(){
+    return vaults.filter(canViewVault);
+  }
+  function renderVaults(){
+    var list=$('vaultList');
+    var empty=$('emptyState');
+    var shown=visibleVaults();
+    list.innerHTML='';
+    if(shown.length===0){
+      list.style.display='none';
+      empty.style.display='block';
+      $('vaultCount').textContent='';
+      if($('navBadge')){$('navBadge').textContent='0';$('navBadge').style.display='none'}
+      return;
+    }
+    list.style.display='flex';
+    empty.style.display='none';
+    $('vaultCount').textContent=shown.length+' vault(s) visible to this wallet';
+    for(var i=0;i<shown.length;i++){
+      var v=shown[i];
+      var access=vaultAccess(v);
+      var isInviteOnly=access.pending&&!access.accepted;
+      var card=document.createElement('div');
+      card.className='vc'+(isInviteOnly?' invite-card':'');
+      card.dataset.vaultId=v.id;
+      if(isInviteOnly)card.dataset.inviteOnly='1';
+      card.innerHTML=
+        '<div class="vi">'+v.icon+'</div>'+
+        '<div class="vm"><div class="vn">'+v.name+(isInviteOnly?' <span class="demo-tag">Invite</span>':v.demo?' <span class="demo-tag">Demo Case</span>':'')+'</div><div class="vd">'+(isInviteOnly?'You were invited. Accept before entering or funding this vault.':v.desc)+'</div></div>'+
+        '<div class="vs">'+
+          (isInviteOnly?'<div class="vst"><div class="vlbl">Status</div><div class="vval">Pending</div></div><div class="vst"><div class="vlbl">Role after accept</div><div class="vval">Member</div></div><div class="vst"><button class="btn btn-o btn-sm acceptVaultInvite" data-vault-id="'+v.id+'">Accept Invite</button></div>':'<div class="vst"><div class="vlbl">Balance</div><div class="vval g">'+v.bal+'</div></div><div class="vst"><div class="vlbl">This Month</div><div class="vval">'+v.month+'</div></div><div class="vst"><div class="vlbl">Role</div><div class="vval'+(v.role==='Admin'?' m':'')+'">'+v.role+'</div></div>')+
+        '</div><span class="arr">›</span>'+
+        (pendingCount(v)>0?'<span class="badge">'+pendingCount(v)+'</span>':'');
+      list.appendChild(card);
+    }
+    var totalPending=0;shown.forEach(function(v){totalPending+=pendingCount(v)});
+    if($('navBadge')){$('navBadge').textContent=totalPending;$('navBadge').style.display=totalPending>0?'inline':'none'}
+  }
+
+  function safeShow(id,display){
+    var el=$(id);
+    if(el)el.style.display=display;
+  }
+
+  function openVault(v){
+    var access=vaultAccess(v);
+    if(access.pending&&!access.accepted){showToast('Accept Invite','Accept this invite before entering the vault','w');return}
+    currentVault=v;
+    $('vdName').textContent=v.name;
+    $('vdDesc').textContent=v.desc+' · '+(v.memberCount||1)+' member'+((v.memberCount||1)>1?'s':'');
+    $('vhIcon').textContent=v.icon;
+    $('vsBal').textContent=v.bal+' tUSDC';
+    $('vsMonth').textContent=v.month+' spent';
+    v.role=roleForVault(v);
+    $('vsRole').textContent=v.role;
+    $('vaultAddr').textContent=v.address||'0xVault...0000';
+    refreshVaultBalance(v);
+    $('apCard').style.display=v.hasAp?'block':'none';
+    if(v.approval){
+      document.querySelector('.ap-title').textContent=v.approval.title;
+      document.querySelector('.ap-sub').textContent=v.approval.sub;
+      document.querySelector('.ap-amt').textContent=v.approval.amount;
+    }
+    renderVaultActivity(v);
+    renderMembers(v);
+    renderSettlement(v);
+    renderFunding(v);
+    renderPendingPayouts(v);
+    document.querySelectorAll('#page-vault-detail .tab').forEach(function(t){t.classList.remove('act')});
+    if($('tab-overview'))$('tab-overview').classList.add('act');
+    safeShow('panel-overview','block');
+    safeShow('panel-vault-activity','none');
+    safeShow('panel-members','none');
+    safeShow('panel-rules','none');
+    showPage('vault-detail');
+  }
+  function renderVaultActivity(v){
+    var list=$('vaultActivityList');
+    if(!list)return;
+    list.innerHTML='';
+    var key=normAddr(v&&v.address);
+    var items=key?(vaultActivityByAddress[key]||[]):((v&&v.activity)||[]);
+    if($('vaultActivityHint'))$('vaultActivityHint').textContent=items.length?'- '+items.length+' item(s)':'- no local activity yet';
+    if(!items.length){
+      list.innerHTML='<div class="ait" data-type="income"><div class="ai-ic p">+</div><div class="ai-info"><div class="ai-title">No activity yet</div><div class="ai-sub">Transactions for this vault will appear here</div></div><div class="ai-amt p">0</div></div>';
+      return;
+    }
+    items.slice(0,8).forEach(function(it){
+      var row=document.createElement('div');
+      var type=it[3]||'pending';
+      var icon=type==='income'?'+':type==='expense'?'-':'!';
+      var cls=type==='income'?'p':type==='expense'?'m':'w';
+      row.className='ait';row.dataset.type=type;
+      row.innerHTML='<div class="ai-ic '+cls+'">'+icon+'</div><div class="ai-info"><div class="ai-title">'+it[0]+'</div><div class="ai-sub">'+it[1]+'</div></div><div class="ai-amt '+(type==='income'?'p':type==='pending'?'w':'m')+'">'+it[2]+'</div>';
+      list.appendChild(row);
+    });
+  }
+  function memberNamesFor(v){
+    var members=(v&&v.members)||[];
+    if(!members.length)members=[(v&&v.ownerAddress)||chain.address||'0xCreator'];
+    return members.map(function(addr){return shortAddr(addr)});
+  }
+  function renderMembers(v){
+    var list=$('memberList');if(!list)return;
+    var pending=(v&&v.pendingInvites)||[];
+    var members=(v&&v.members)||[];
+    if(!members.length)members=[v.ownerAddress||chain.address||'0xCreator'];
+    var mc=members.length;
+    if($('memberHint'))$('memberHint').textContent='- '+mc+' accepted member'+(mc>1?'s':'')+(pending.length?' - '+pending.length+' pending invite'+(pending.length>1?'s':''):'')+(v&&v.hasAp?' - '+pendingCount(v)+' pending approval':'');
+    var html='';
+    members.forEach(function(addr,idx){
+      html+='<div class="mr"><div class="mav" style="background:linear-gradient(135deg,#2D8F7E,#5EC8B5)">'+(idx===0?'A':'M')+'</div><div class="minfo"><div class="mn">'+shortAddr(addr)+'</div><div class="mrole">'+(idx===0?'Owner - Admin - Member':'Member - Participant')+'</div></div><span class="mb v">Accepted</span><div class="mlim">'+(idx===0?'Owner':'Member')+'<span class="mlbl">role</span></div></div>';
+    });
+    pending.forEach(function(addr,idx){
+      var canAccept=normAddr(addr)===normAddr(chain.address);
+      html+='<div class="mr"><div class="mav" style="background:linear-gradient(135deg,#5A6569,#8A9BA0)">?</div><div class="minfo"><div class="mn">'+shortAddr(addr)+'</div><div class="mrole">Pending invite - waiting for wallet acceptance</div></div><span class="mb u">Pending</span>'+(canAccept?'<button class="btn btn-o btn-sm acceptInvite" data-idx="'+idx+'">Accept</button>':'')+'</div>';
+    });
+    list.innerHTML=html;
+    document.querySelectorAll('.acceptInvite').forEach(function(btn){btn.onclick=function(){acceptInvite(Number(btn.dataset.idx))}});
+  }
+  function acceptInvite(idx){
+    if(!currentVault||currentVault.demo)return;
+    var pending=currentVault.pendingInvites||[];
+    var addr=pending[idx];
+    if(!addr)return;
+    if(normAddr(addr)!==normAddr(chain.address)){showToast('Accept Invite','Connect the invited wallet first','w');return}
+    var finish=function(){
+      pending.splice(idx,1);
+      currentVault.members=currentVault.members||[currentVault.ownerAddress||chain.address||'0xCreator'];
+      if(!addrListHas(currentVault.members,addr))currentVault.members.push(addr);
+      currentVault.pendingInvites=pending;
+      currentVault.memberCount=currentVault.members.length;
+      currentVault.role=vaultOwner(currentVault)===viewerAddress()?'Admin':'Member';
+      saveLiveVaults();
+      renderVaults();renderMembers(currentVault);renderSettlement(currentVault);renderFunding(currentVault);
+      $('vdDesc').textContent=currentVault.desc+' - '+currentVault.memberCount+' members';
+      showToast('Invite Accepted',shortAddr(addr)+' is now a member','g');
+    };
+    if(isLiveAddress(currentVault.address)&&requireContracts()){
+      sendTx('Accept invite',async function(signer){
+        return await new ethers.Contract(currentVault.address,ABIS.vault,signer).acceptInvite();
+      }).then(function(receipt){if(receipt)finish()});
+      return;
+    }
+    finish();
+  }
+  function acceptVaultInvite(v){
+    if(!v)return;
+    var pending=v.pendingInvites||[];
+    var idx=-1;
+    for(var i=0;i<pending.length;i++){if(normAddr(pending[i])===normAddr(chain.address))idx=i}
+    if(idx<0){showToast('Accept Invite','Connect the invited wallet first','w');return}
+    currentVault=v;
+    acceptInvite(idx);
+  }
+
+  function renderFunding(v){
+    var box=$('fundBox'), grid=$('fundGrid');if(!box||!grid||!v)return;
+    var mode=v.fundingMode||'shared';
+    var target=Number(v.target||0)||0;
+    var bal=Number(String(v.bal||0).replace(/,/g,''))||0;
+    var names=memberNamesFor(v);
+    $('fundModeBadge').textContent=mode==='managed'?'Managed Budget':'Shared Budget';
+    if(mode==='managed'){
+      $('fundTitle').textContent='Budget Control';
+      var pendingTotal=pendingPayoutTotal(v);
+      var available=Math.max(0,bal-pendingTotal);
+      var planned=Math.max(1,Number(v.targetMembers||v.memberCount||names.length||1));
+      $('fundHint').textContent='Target '+fmtDisplay(target)+' tUSDC · funded '+fmtDisplay(bal)+' tUSDC · available '+fmtDisplay(available)+' tUSDC · '+planned+' planned member'+(planned>1?'s':'');
+      $('fundFill').style.width=Math.min(100,target?bal/target*100:100)+'%';
+      grid.innerHTML=
+        '<div class="fund-item"><span>Funding source</span><b>Admin / sponsor</b></div>'+
+        '<div class="fund-item"><span>Member contribution</span><b>Not required</b></div>'+
+        '<div class="fund-item"><span>Available now</span><b>'+fmtDisplay(available)+' tUSDC</b></div>'+
+        '<div class="fund-item"><span>Pending requests</span><b>'+fmtDisplay(pendingTotal)+' tUSDC</b></div>'+
+        '<div class="fund-item"><span>Approval rule</span><b>By permission</b></div>'+
+        '<div class="fund-item"><span>Planned members</span><b>'+planned+'</b></div>';
+      return;
+    }
+    var count=Math.max(1,Number(v.targetMembers||v.memberCount||names.length||1));
+    var due=target?target/count:0;
+    $('fundTitle').textContent='Budget Progress';
+    $('fundHint').textContent='Target '+fmtDisplay(target)+' tUSDC · '+count+' planned member'+(count>1?'s':'')+' · '+fmtDisplay(due)+' tUSDC each · funded '+fmtDisplay(bal)+' tUSDC';
+    $('fundFill').style.width=Math.min(100,target?bal/target*100:0)+'%';
+    var paid=v.contributions||[];
+    grid.innerHTML='';
+    for(var i=0;i<count;i++){
+      var p=Number(paid[i]||0);var status=p>=due?'Paid':p>0?'Partial':'Unpaid';
+      var label=names[i]||('Planned member '+(i+1));
+      var item=document.createElement('div');item.className='fund-item';
+      item.innerHTML='<span>'+(label+' - '+status)+'</span><b>'+fmtDisplay(p)+' / '+fmtDisplay(due)+' tUSDC</b>';
+      grid.appendChild(item);
+    }
+  }
+  function renderSettlement(v){
+    var grid=$('settleGrid');
+    if(!grid||!v)return;
+    var count=Math.max(1,Number(v.memberCount||1));
+    var names=memberNamesFor(v);
+    var bal=Number(String(v.bal||0).replace(/,/g,''));
+    if(!Number.isFinite(bal))bal=0;
+    var each=bal/count;
+    var eachText=fmtDisplay(each);
+    grid.innerHTML='';
+    for(var i=0;i<count;i++){
+      var item=document.createElement('div');
+      item.className='settle-item';
+      item.innerHTML='<span>'+(names[i]||('Member '+(i+1)))+'</span><b>'+eachText+' tUSDC</b>';
+      grid.appendChild(item);
+    }
+  }
+  function pendingCount(v){
+    var key=normAddr(v&&v.address);var arr=key?(vaultActivityByAddress[key]||[]):((v&&v.activity)||[]);
+    var c=0;arr.forEach(function(it){if((it[3]||'')==='pending')c++});
+    if(v&&v.pendingPayouts&&v.pendingPayouts.length)c=Math.max(c,v.pendingPayouts.length);
+    if(v&&v.hasAp)c=Math.max(c,1);
+    return c;
+  }
+  function renderPendingPayouts(v){
+    var box=$('pendingPayoutList');
+    if(!box)return;
+    var items=(v&&v.pendingPayouts)||[];
+    box.innerHTML='';
+    if(!items.length){if($('apCard'))$('apCard').style.display='none';return}
+    if($('apCard'))$('apCard').style.display='none';
+    items.forEach(function(p){
+      var card=document.createElement('div');
+      card.className='ap';
+      card.dataset.payoutId=p.id;
+      card.innerHTML='<span class="ap-tag">Needs Action</span><div class="ap-head"><div class="ap-ic">!</div><div><div class="ap-title">'+p.purpose+' - '+fmtDisplay(p.amount)+' tUSDC</div><div class="ap-sub">Requested by '+publicActor(p.requester)+' · pending admin approval · to '+shortAddr(p.recipient)+'</div></div></div><div class="ap-amt">'+fmtDisplay(p.amount)+' tUSDC</div><div class="ap-prog"><div class="ap-prog-fill"></div></div><div class="ap-actions"><button class="ap-btn ghost declinePayout" data-payout-id="'+p.id+'">Decline</button><button class="ap-btn primary approvePayout" data-payout-id="'+p.id+'">Review & Approve</button></div>';
+      box.appendChild(card);
+    });
+  }
+  function removePendingPayout(v,id){
+    if(!v)return null;
+    var found=null;
+    v.pendingPayouts=(v.pendingPayouts||[]).filter(function(p){if(String(p.id)===String(id)){found=p;return false}return true});
+    v.hasAp=v.pendingPayouts.length>0;
+    return found;
+  }
+  function pendingPayoutTotal(v){
+    var total=0;
+    ((v&&v.pendingPayouts)||[]).forEach(function(p){total+=Number(p.amount||0)});
+    return total;
+  }
+  function addVaultActivityFor(addr,title,sub,amount,type){
+    var key=normAddr(addr);
+    if(!key)return;
+    vaultActivityByAddress[key]=vaultActivityByAddress[key]||[];
+    vaultActivityByAddress[key].unshift([title,sub,amount,type||'pending']);
+    vaultActivityByAddress[key]=vaultActivityByAddress[key].slice(0,20);
+    if(currentVault&&normAddr(currentVault.address)===key)renderVaultActivity(currentVault);
+    saveVaultActivity();
+    saveLiveVaults();
+  }
+  function addVaultActivity(title,sub,amount,type){
+    addVaultActivityFor(getActiveVaultAddress(),title,sub,amount,type);
+  }
+  function addGlobalActivity(title,sub,amount,type){
+    walletActivity.unshift([title,sub,amount,type||'income']);
+    walletActivity=walletActivity.slice(0,20);
+    saveWalletActivity();
+    renderWalletActivity();
+  }
+  function renderActivityRows(list,items){
+    if(!list)return;list.innerHTML='';
+    (items.length?items:[['No wallet activity yet','Send, receive, faucet, and vault deposits appear here','0','income']]).forEach(function(it){
+      var row=document.createElement('div');var type=it[3]||'income';
+      row.className='ait';row.dataset.type=type;
+      var icon=type==='income'?'+':type==='expense'?'-':'!';var cls=type==='income'?'p':type==='expense'?'m':'w';
+      row.innerHTML='<div class="ai-ic '+cls+'">'+icon+'</div><div class="ai-info"><div class="ai-title">'+it[0]+'</div><div class="ai-sub">'+it[1]+'</div></div><div class="ai-amt '+cls+'">'+it[2]+'</div>';
+      list.appendChild(row);
+    });
+  }
+  function allVaultActivity(){
+    var out=[];
+    Object.keys(vaultActivityByAddress).forEach(function(k){
+      var vaultName='Shared Vault';
+      var allowed=false;
+      vaults.forEach(function(v){if(normAddr(v.address)===k&&vaultAccess(v).accepted){vaultName=v.name;allowed=true}});
+      if(!allowed)return;
+      (vaultActivityByAddress[k]||[]).forEach(function(it){out.push([it[0],vaultName+' · '+it[1],it[2],it[3]||'income'])});
+    });
+    return out;
+  }
+  function renderWalletActivity(){
+    renderActivityRows($('walletActivityList'),walletActivity.concat(allVaultActivity()));
+    renderActivityRows($('homeWalletActivityList'),walletActivity);
+  }
+
+  // CONNECT FLOW
+  $('btnConnect').onclick=function(){openModal('connect')};
+  $('btnCloseConnect').onclick=function(){closeModal('connect')};
+  async function connectWallet(label){
+    try{
+      if(!window.ethereum||typeof ethers==='undefined'){
+        enterDemoMode(label,!window.ethereum?'No injected wallet found':'ethers library not loaded');
+        return;
+      }
+      await ensureWallet();
+      closeModal('connect');$('page-connect').classList.remove('act');$('topBar').style.display='flex';$('appMain').style.display='flex';showPage('home');
+      setWalletBadge(true,'Connected · '+shortAddr(chain.address));
+      showToast('Connected',label+' connected: '+shortAddr(chain.address),'g');
+      setChainStatus('Wallet connected');
+      loadWalletActivity();
+      refreshPersonalBalance();
+      renderVaults();
+      renderWalletActivity();
+      vaults.filter(function(v){return !v.demo}).forEach(function(v){refreshVaultBalance(v)});
+    }catch(err){showToast('Connect failed',(err&&err.message)||String(err),'w')}
+  }
+  $('btnMetaMask').onclick=function(){connectWallet('MetaMask')};
+  $('btnWalletConnect').onclick=function(){connectWallet('WalletConnect')};
+  $('btnGIWAWallet').onclick=function(){connectWallet('GIWA Wallet')};
+  async function autoReconnect(){
+    try{
+      if(!window.ethereum||typeof ethers==='undefined')return;
+      var accounts=await window.ethereum.request({method:'eth_accounts'});
+      if(accounts&&accounts.length)connectWallet('Wallet');
+    }catch(e){}
+  }
+
+  // NAV
+  $('nav-home').onclick=function(){showPage('home')};
+  $('nav-vaults').onclick=function(){showPage('vaults')};
+  $('nav-activity').onclick=function(){showPage('activity')};
+  $('nav-settings').onclick=function(){showPage('settings')};
+
+  // HOME
+  $('btnSend').onclick=function(){
+    if(!isConfigured('testUSDC')){showToast('Send','Token contract not configured','w');return}
+    var to=prompt('Recipient address');
+    if(!to)return;
+    to=to.trim();
+    if(!isLiveAddress(to)){showToast('Send','Enter a valid 0x recipient address','w');return}
+    var amount=prompt('Send amount (tUSDC)','1');
+    if(amount===null)return;
+    amount=String(amount).trim();
+    if(!amount||isNaN(Number(amount))||Number(amount)<=0){showToast('Send','Enter a valid amount','w');return}
+    sendTx('Send tUSDC',async function(signer){
+      var token=new ethers.Contract(ONCHAIN_CONFIG.testUSDC,[
+        'function transfer(address to,uint256 amount) external returns (bool)',
+        'function balanceOf(address account) external view returns (uint256)'
+      ],signer);
+      return await token.transfer(to,ethers.parseUnits(amount,ONCHAIN_CONFIG.tokenDecimals));
+    }).then(function(r){
+      if(!r)return;
+      addGlobalActivity('Personal send','To '+shortAddr(to)+' · just now','-'+amount,'expense');
+      refreshPersonalBalance();
+    });
+  };
+  $('btnReceive').onclick=function(){
+    var addr=chain.address&&chain.address.startsWith('0x')?chain.address:'';
+    if(!addr){showToast('Receive','Connect wallet first','w');return}
+    try{navigator.clipboard&&navigator.clipboard.writeText(addr)}catch(e){}
+    prompt('Your receive address (QR placeholder)',addr);
+    showToast('Receive Address',shortAddr(addr)+' copied','g');
+  };
+  $('btnFaucet').onclick=function(){
+    if(!isConfigured('testUSDC')){showToast('Faucet','UriMoaTestUSDC address not configured yet','w');setChainStatus('UriMoaTestUSDC not configured');return}
+    sendTx('Faucet claim',async function(signer){
+      var token=new ethers.Contract(ONCHAIN_CONFIG.testUSDC,ABIS.testUSDC,signer);
+      return await token.claim();
+    }).then(function(r){if(r){addGlobalActivity('Faucet claim','GIWA Sepolia Faucet · just now','+1,000','income');refreshPersonalBalance()}});
+  };
+  if($('btnGoVaults'))$('btnGoVaults').onclick=function(){showPage('vaults')};
+  if($('btnGoActivity'))$('btnGoActivity').onclick=function(){showPage('activity')};
+
+  if($('vaultList'))$('vaultList').onclick=function(e){
+    var inviteBtn=e.target.closest('.acceptVaultInvite');
+    if(inviteBtn){
+      var inviteId=inviteBtn.dataset.vaultId;
+      var inviteVault=null;
+      vaults.forEach(function(v){if(v.id===inviteId)inviteVault=v});
+      acceptVaultInvite(inviteVault);
+      return;
+    }
+    var card=e.target.closest('.vc');
+    if(!card)return;
+    var id=card.dataset.vaultId;
+    var chosen=null;
+    vaults.forEach(function(v){if(v.id===id)chosen=v});
+    if(chosen)openVault(chosen);
+  };
+
+  // CREATE
+  $('btnCreateNew').onclick=function(){showPage('create')};
+  $('btnEmptyCreate').onclick=function(){showPage('create')};
+  $('btnBackCreate').onclick=function(){showPage('vaults')};
+  $('btnCancelCreate').onclick=function(){showPage('vaults')};
+  $('btnDeploy').onclick=function(){
+    var name=$('vaultName').value||'New Vault';
+    var fundingMode=($('fundMode')&&$('fundMode').value)||'shared';
+    var targetBudget=Number(($('targetBudget')&&$('targetBudget').value)||0)||0;
+    var targetMembers=Math.max(1,Math.floor(Number(($('targetMembers')&&$('targetMembers').value)||1)||1));
+    var template=vaultTemplates[selectedTemplate]||vaultTemplates.trip;
+    var dailyInput=cleanAmountInput(($('dailyLimitInput')&&$('dailyLimitInput').value)||'50');
+    var thresholdInput=cleanAmountInput(($('largeThresholdInput')&&$('largeThresholdInput').value)||'100');
+    if(requireContracts()){
+      sendTx('Create vault',async function(signer){
+        var factory=new ethers.Contract(ONCHAIN_CONFIG.vaultFactory,ABIS.factory,signer);
+        var daily=ethers.parseUnits(dailyInput,ONCHAIN_CONFIG.tokenDecimals);
+        var threshold=ethers.parseUnits(thresholdInput,ONCHAIN_CONFIG.tokenDecimals);
+        return await factory.createVault(name,ONCHAIN_CONFIG.testUSDC,daily,threshold);
+      }).then(function(receipt){
+        if(!receipt)return;
+        var created='0xVaultNew...pending';
+        try{
+          var iface=new ethers.Interface(ABIS.factory);
+          for(var i=0;i<receipt.logs.length;i++){
+            try{var parsed=iface.parseLog(receipt.logs[i]);if(parsed&&parsed.name==='VaultCreated')created=parsed.args.vault}catch(e){}
+          }
+        }catch(e){}
+        chain.lastVault=created;
+        try{localStorage.setItem('uriMoaWallet.lastVault',created)}catch(e){}
+        var newVault={id:'v'+Date.now(),icon:template.icon,name:name,demo:false,desc:template.desc,bal:0,month:0,role:'Admin',hasAp:false,address:created,memberCount:1,targetMembers:targetMembers,ownerAddress:chain.address||'0x71A2...cD04',members:[chain.address||'0x71A2...cD04'],pendingInvites:[],fundingMode:fundingMode,target:targetBudget,contributions:[],pendingPayouts:[],dailyUsage:{},dailyLimit:Number(dailyInput)||50,largeThreshold:Number(thresholdInput)||100};
+        var key=normAddr(created);
+        if(key)vaultActivityByAddress[key]=[['Vault created','Contract deployed · just now','0','income']];
+        saveVaultActivity();
+        vaults.push(newVault);
+        saveLiveVaults();
+        renderVaults();
+        openVault(newVault);
+        showToast('Vault Ready','Live vault address is now active','g');
+      });
+      return;
+    }
+    vaults.push({id:'v'+Date.now(),icon:template.icon,name:name,demo:false,desc:template.desc,bal:0,month:0,role:'Admin',hasAp:false,address:'0xVaultNew...0000',memberCount:1,targetMembers:targetMembers,ownerAddress:chain.address||'0xCreator',members:[chain.address||'0xCreator'],pendingInvites:[],fundingMode:fundingMode,target:targetBudget,contributions:[],pendingPayouts:[],dailyUsage:{},dailyLimit:Number(dailyInput)||50,largeThreshold:Number(thresholdInput)||100});
+    renderVaults();
+    showToast('Deployed',name+' created','g');
+    showPage('vaults');
+  };
+  function selectTemplate(key,buttonId){
+    selectedTemplate=key;
+    var tpl=vaultTemplates[key]||vaultTemplates.trip;
+    document.querySelectorAll('.tc').forEach(function(c){c.classList.remove('sel')});
+    $(buttonId).classList.add('sel');
+    $('vaultName').value=tpl.name;
+    $('fundMode').value=tpl.fundingMode;
+    $('targetBudget').value=tpl.target;
+    $('targetMembers').value=tpl.targetMembers;
+    updateCreateModeCopy();
+  }
+  function updateCreateModeCopy(){
+    var mode=($('fundMode')&&$('fundMode').value)||'shared';
+    if(!$('fundModeHelp'))return;
+    if(mode==='managed'){
+      $('fundModeHelp').textContent='Admin or sponsor funds this vault. Members do not split deposits; they request spending by permission.';
+      $('targetBudgetLabel').textContent='Budget Pool Target';
+      $('targetMembersLabel').textContent='Planned Members';
+    }else{
+      $('fundModeHelp').textContent='Participants split the target budget and fund their own share.';
+      $('targetBudgetLabel').textContent='Target Budget';
+      $('targetMembersLabel').textContent='Target Members';
+    }
+  }
+  $('tpl1').onclick=function(){selectTemplate('trip','tpl1')};
+  $('tpl2').onclick=function(){selectTemplate('family','tpl2')};
+  $('tpl3').onclick=function(){selectTemplate('defi','tpl3')};
+  $('tpl4').onclick=function(){selectTemplate('custom','tpl4')};
+  $('fundMode').onchange=updateCreateModeCopy;
+  updateCreateModeCopy();
+
+  // VAULT DETAIL HEADER
+  $('btnBack').onclick=function(){showPage('vaults')};
+  function inviteToCurrentVault(){
+    var addr=prompt('Invite wallet address');
+    if(!addr||!currentVault)return;
+    if(currentVault.demo){showToast('Demo Vault','Default case members are fixed for presentation','w');return}
+    currentVault.pendingInvites=currentVault.pendingInvites||[];
+    addr=addr.trim();
+    if(!isLiveAddress(addr)){showToast('Invite','Enter a complete 0x wallet address','w');return}
+    if(addrListHas(currentVault.members,addr)||addrListHas(currentVault.pendingInvites,addr)){showToast('Invite','Address already added','w');return}
+    var finish=function(){
+      currentVault.pendingInvites.push(addr);
+      saveLiveVaults();renderVaults();renderMembers(currentVault);renderSettlement(currentVault);renderFunding(currentVault);
+      showToast('Invite Sent','Pending acceptance by '+shortAddr(addr),'g');
+    };
+    if(isLiveAddress(currentVault.address)&&requireContracts()){
+      var makeAdmin=false;
+      sendTx('Invite member',async function(signer){
+        var vaultContract=new ethers.Contract(currentVault.address,ABIS.vault,signer);
+        try{
+          var owner=await vaultContract.owner();
+          if(normAddr(owner)!==normAddr(chain.address))throw new Error('Only the vault creator can invite members. Switch to the wallet that created this vault.');
+        }catch(readErr){
+          var readMsg=(readErr&&readErr.message)||String(readErr);
+          if(readMsg.indexOf('Only the vault creator')>=0)throw readErr;
+          throw new Error('This vault looks like it was created by an older contract. Redeploy the latest contract, then create a new vault.');
+        }
+        return await vaultContract.inviteMember(addr,makeAdmin);
+      }).then(function(receipt){if(receipt)finish()});
+      return;
+    }
+    finish();
+  }
+  $('btnInvite').onclick=inviteToCurrentVault;
+  async function copyVaultAddress(){
+    var addr=document.getElementById('vaultAddr').textContent.trim();
+    if(!isLiveAddress(addr)){showToast('Copy','No live vault address to copy','w');return}
+    try{
+      await navigator.clipboard.writeText(addr);
+      showToast('Copied',shortAddr(addr)+' copied to clipboard','g');
+    }catch(e){
+      prompt('Copy vault address manually',addr);
+      showToast('Copy','Clipboard blocked; address shown for manual copy','w');
+    }
+  }
+  document.getElementById('btnCopyVault').onclick=copyVaultAddress;
+  document.getElementById('btnCopyVault2').onclick=copyVaultAddress;
+  $('btnDeposit').onclick=function(){
+    if(currentVault&&!vaultAccess(currentVault).accepted){showToast('Deposit blocked','Accept the invite before funding this vault','w');return}
+    var vault=getActiveVaultAddress();
+    if(!isConfigured('testUSDC')||!isLiveAddress(vault)){
+      var pasted=prompt('Paste live vault address');
+      if(pasted)pasted=pasted.trim();
+      if(!isLiveAddress(pasted)){showToast('Deposit','Need a real live vault address','w');setChainStatus('No live vault address');return}
+      vault=pasted;
+      $('vaultAddr').textContent=vault;
+    }
+    var activeVault=ensureLiveVaultFromAddress(vault,false)||currentVault;
+    if(activeVault&&normAddr(activeVault.address)===normAddr(vault)){currentVault=activeVault;renderVaultActivity(activeVault)}
+    var amount=prompt('Deposit amount (tUSDC)','10');
+    if(amount===null)return;
+    amount=String(amount).trim();
+    if(!amount||isNaN(Number(amount))||Number(amount)<=0){showToast('Deposit','Enter a valid amount','w');return}
+    sendTx('Approve tUSDC',async function(signer){
+      var token=new ethers.Contract(ONCHAIN_CONFIG.testUSDC,ABIS.testUSDC,signer);
+      return await token.approve(vault,ethers.parseUnits(amount,ONCHAIN_CONFIG.tokenDecimals));
+    }).then(function(receipt){
+      if(!receipt)return;
+      sendTx('Deposit to vault',async function(signer){
+        var vaultContract=new ethers.Contract(vault,ABIS.vault,signer);
+        return await vaultContract.deposit(ethers.parseUnits(amount,ONCHAIN_CONFIG.tokenDecimals));
+      }).then(function(r){
+        if(!r)return;
+        var targetVault=ensureLiveVaultFromAddress(vault,false);
+        if(targetVault){
+          targetVault.desc='Live vault · funded on-chain';
+          var newBal=currentVaultBalanceNumber()+Number(amount);
+          targetVault.bal=fmtDisplay(newBal);
+          if((targetVault.fundingMode||'shared')==='shared'){
+            targetVault.contributions=targetVault.contributions||[];
+            var cIndex=memberIndexFor(targetVault,chain.address);
+            targetVault.contributions[cIndex]=Number(targetVault.contributions[cIndex]||0)+Number(amount);
+          }
+          if($('vsBal')&&normAddr(targetVault.address)===normAddr(vault)){$('vsBal').textContent=targetVault.bal+' tUSDC';renderFunding(targetVault);renderSettlement(targetVault);}
+        }
+        addVaultActivityFor(vault,'Vault deposit','Deposited by '+publicActor(chain.address)+' · just now','+'+amount,'income');
+        addGlobalActivity('Deposit to vault','To '+shortAddr(vault)+' · just now','-'+amount,'expense');
+        refreshPersonalBalance();
+        setTimeout(function(){refreshVaultBalance(targetVault);refreshPersonalBalance()},3000);
+        renderVaults();
+        saveLiveVaults();
+      });
+    });
+  };
+
+  $('btnInvite2').onclick=inviteToCurrentVault;
+
+  // TABS
+  function showVaultTab(id){document.querySelectorAll('#page-vault-detail .tab').forEach(function(t){t.classList.remove('act')});['overview','vault-activity','members','rules'].forEach(function(x){safeShow('panel-'+x,'none')});var tab=$('tab-'+id);var panel=$('panel-'+id);if(tab)tab.classList.add('act');if(panel)panel.style.display='block'}
+  $('tab-overview').onclick=function(){showVaultTab('overview')};
+  $('tab-vault-activity').onclick=function(){showVaultTab('vault-activity')};
+  $('tab-members').onclick=function(){showVaultTab('members')};
+  $('tab-rules').onclick=function(){showVaultTab('rules')};
+
+  function approvePayoutById(id){
+    var vault=getActiveVaultAddress();
+    if(!isLiveAddress(vault)){showToast('Approve','Open or paste a live vault address first','w');setChainStatus('No live vault address');return}
+    var approveVault=ensureLiveVaultFromAddress(vault,false);
+    if(approveVault&&normAddr(approveVault.address)===normAddr(getActiveVaultAddress()))currentVault=approveVault;
+    var pending=((currentVault&&currentVault.pendingPayouts)||[]).filter(function(p){return String(p.id)===String(id)})[0];
+    if(!pending){showToast('Approve','Pending payout not found','w');return}
+    sendTx('Approve payout',async function(signer){
+      var vaultContract=new ethers.Contract(vault,ABIS.vault,signer);
+      return await vaultContract.approvePayout(pending.chainId);
+    }).then(function(receipt){
+      if(!receipt)return;
+      var done=removePendingPayout(currentVault,id)||pending;
+      var amt=Number(done.amount||0);
+      currentVault.month=fmtDisplay((Number(currentVault.month)||0)+amt);
+      currentVault.bal=fmtDisplay(Math.max(0,currentVaultBalanceNumber()-amt));
+      $('vsMonth').textContent=currentVault.month+' spent';
+      $('vsBal').textContent=currentVault.bal+' tUSDC';
+      renderPendingPayouts(currentVault);
+      renderFunding(currentVault);
+      renderSettlement(currentVault);
+      updateBadge(-1);
+      addVaultActivityFor(vault,'Payout approved','Approved by '+publicActor(chain.address)+' · requested by '+publicActor(done.requester)+' · paid to '+shortAddr(done.recipient),'-'+fmtDisplay(amt),'expense');
+      saveLiveVaults();
+      setTimeout(function(){refreshVaultBalance(currentVault);refreshPersonalBalance()},3000);
+    });
+  }
+  function declinePayoutById(id){
+    var pending=((currentVault&&currentVault.pendingPayouts)||[]).filter(function(p){return String(p.id)===String(id)})[0];
+    if(!pending){showToast('Declined','Pending payout not found','w');return}
+    var vault=getActiveVaultAddress();
+    var finish=function(){
+      var done=removePendingPayout(currentVault,id)||pending;
+      renderPendingPayouts(currentVault);
+      updateBadge(-1);
+      addVaultActivityFor(vault,'Payout declined','Declined by '+publicActor(chain.address)+' · requested by '+publicActor(done.requester),fmtDisplay(done.amount),'pending');
+      saveLiveVaults();
+      showToast('Declined','Request rejected','w');
+    };
+    if(isLiveAddress(vault)&&requireContracts()){
+      sendTx('Reject payout',async function(signer){
+        var vaultContract=new ethers.Contract(vault,ABIS.vault,signer);
+        return await vaultContract.rejectPayout(pending.chainId);
+      }).then(function(receipt){if(receipt)finish()});
+      return;
+    }
+    finish();
+  }
+  $('btnApprove').onclick=function(){var first=(currentVault&&currentVault.pendingPayouts&&currentVault.pendingPayouts[0]);if(first)approvePayoutById(first.id)};
+  $('btnDecline').onclick=function(){var first=(currentVault&&currentVault.pendingPayouts&&currentVault.pendingPayouts[0]);if(first)declinePayoutById(first.id)};
+  if($('panel-overview'))$('panel-overview').onclick=function(e){
+    var approve=e.target.closest('.approvePayout');
+    if(approve){approvePayoutById(approve.dataset.payoutId);return}
+    var decline=e.target.closest('.declinePayout');
+    if(decline){declinePayoutById(decline.dataset.payoutId)}
+  };
+
+  // MODAL: NEW EXPENSE
+  if($('btnNewExpenseTop'))$('btnNewExpenseTop').onclick=function(){
+    if(currentVault&&!vaultAccess(currentVault).accepted){showToast('Payout blocked','Accept the invite before requesting payouts','w');return}
+    openModal('newExpense');
+  };
+  $('btnCloseModal').onclick=function(){closeModal('newExpense')};
+  $('btnCancelExp').onclick=function(){closeModal('newExpense')};
+  function showPendingPayout(payout){
+    if(!currentVault)return;
+    currentVault.hasAp=true;
+    currentVault.pendingPayouts=currentVault.pendingPayouts||[];
+    currentVault.pendingPayouts.push(payout);
+    renderPendingPayouts(currentVault);
+    updateBadge(1);
+    showVaultTab('overview');
+  }
+  $('btnSubmitExp').onclick=function(){
+    var amountText=cleanAmountInput($('expAmt').value);
+    var amtNum=Number(amountText);
+    var pur=$('expPur').value||'Payout';
+    var recv=$('expRecv').value.trim();
+    closeModal('newExpense');
+    if(!amountText||!Number.isFinite(amtNum)||amtNum<=0){showToast('Payout','Enter a valid amount','w');return}
+    var vault=getActiveVaultAddress();
+    if(!validRecipient(recv)){showToast('Invalid recipient','Enter a complete 0x recipient address. It cannot be the vault or zero address.','w');setChainStatus('Payout blocked - invalid recipient');return}
+    if(!currentVault){showToast('Payout','Open a vault first','w');return}
+    var dailyLimit=Number(currentVault.dailyLimit||50);
+    var used=requesterDailyUsed(currentVault,chain.address);
+    if(amtNum>dailyLimit||used+amtNum>dailyLimit){
+      showToast('Daily limit exceeded','Daily request limit is '+fmtDisplay(dailyLimit)+' tUSDC. You already requested '+fmtDisplay(used)+' today.','w');
+      setChainStatus('Payout blocked - daily limit exceeded');
+      return;
+    }
+    var vaultBal=currentVaultBalanceNumber();
+    if(amtNum>vaultBal){showToast('Insufficient Vault Balance','Vault has '+vaultBal+' tUSDC, cannot request '+amountText,'w');setChainStatus('Payout blocked - insufficient vault balance');return}
+    var availableBal=Math.max(0,vaultBal-pendingPayoutTotal(currentVault));
+    if(amtNum>availableBal){showToast('Insufficient Available Balance','Vault has '+fmtDisplay(availableBal)+' tUSDC available after pending requests','w');setChainStatus('Payout blocked - insufficient available balance');return}
+    var requester=chain.address;
+    var sub='Requested by '+publicActor(requester)+' · pending approval to '+shortAddr(recv);
+    var localId='p'+Date.now();
+    function storeRequest(chainId){
+      var payout={id:localId,chainId:chainId,purpose:pur,amount:amtNum,recipient:recv,requester:requester,createdAt:Date.now()};
+      addRequesterDailyUsed(currentVault,requester,amtNum);
+      addVaultActivityFor(vault,pur+' requested',sub,fmtDisplay(amtNum),'pending');
+      showPendingPayout(payout);
+      showToast('Payout Requested',fmtDisplay(amtNum)+' tUSDC waits for approval','w');
+      saveLiveVaults();
+    }
+    if(isLiveAddress(vault)&&isLiveAddress(recv)){
+      ensureLiveVaultFromAddress(vault,false);
+      var chainPayoutId=0;
+      sendTx('Request payout',async function(signer){
+        var vaultContract=new ethers.Contract(vault,ABIS.vault,signer);
+        chainPayoutId=Number(await vaultContract.payoutCount());
+        return await vaultContract.requestPayout(recv,ethers.parseUnits(amountText,ONCHAIN_CONFIG.tokenDecimals),pur);
+      }).then(function(r){if(r)storeRequest(chainPayoutId)});
+      return;
+    }
+    storeRequest(localId);
+  };
+
+  $('btnSettle').onclick=function(){
+    var vault=getActiveVaultAddress();
+    if(!isLiveAddress(vault)){showToast('Settlement','Open or paste a live vault address first','w');setChainStatus('No live vault address');return}
+    var settleVault=ensureLiveVaultFromAddress(vault,false);
+    if(settleVault&&normAddr(settleVault.address)===normAddr(getActiveVaultAddress()))currentVault=settleVault;
+    sendTx('Settle equal refund',async function(signer){
+      var vaultContract=new ethers.Contract(vault,ABIS.vault,signer);
+      return await vaultContract.settleEqual();
+    }).then(function(r){if(r){addVaultActivityFor(vault,'Settlement executed','You · just now','0','expense');refreshPersonalBalance();refreshVaultBalance(settleVault||currentVault);saveLiveVaults()}});
+  };
+
+  $('modal-newExpense').onclick=function(e){if(e.target===$('modal-newExpense'))closeModal('newExpense');};
+  $('modal-connect').onclick=function(e){if(e.target===$('modal-connect'))closeModal('connect');};
+
+  // ACTIVITY FILTER
+  function setFilter(f){
+    document.querySelectorAll('.flt-chip').forEach(function(c){c.classList.remove('act')});
+    $('f-'+f).classList.add('act');
+    document.querySelectorAll('.ait').forEach(function(item){
+      item.style.display=(f==='all'||item.dataset.type===f)?'flex':'none';
+    });
+    document.querySelectorAll('.agl').forEach(function(label){
+      var next=label.nextElementSibling;
+      var vis=false;
+      while(next&&next.classList.contains('ail')){
+        if(next.querySelector(".ait:not([style*='display: none'])"))vis=true;
+        next=next.nextElementSibling;
+      }
+      label.style.display=vis?'block':'none';
+    });
+  }
+  $('f-all').onclick=function(){setFilter('all')};
+  $('f-income').onclick=function(){setFilter('income')};
+  $('f-expense').onclick=function(){setFilter('expense')};
+  $('f-pending').onclick=function(){setFilter('pending')};
+
+  // SETTINGS
+  $('btnLogout').onclick=disconnectWallet;
+  $('btnTopDisconnect').onclick=disconnectWallet;
+
+  // RULES CLICK
+  document.querySelectorAll('.ri').forEach(function(r){
+    r.onclick=function(){var rule=r.getAttribute('data-rule');if(rule)showToast('Rule',rule,'')};
+  });
+
+  function filterHomeWallet(type){
+    document.querySelectorAll('#page-home .flt-chip').forEach(function(c){c.classList.remove('act')});
+    var btn=$('hw-'+type);if(btn)btn.classList.add('act');
+    document.querySelectorAll('#homeWalletActivityList .ait').forEach(function(item){item.style.display=(type==='all'||item.dataset.type===type)?'flex':'none'});
+  }
+  if($('hw-all'))$('hw-all').onclick=function(){filterHomeWallet('all')};
+  if($('hw-income'))$('hw-income').onclick=function(){filterHomeWallet('income')};
+  if($('hw-expense'))$('hw-expense').onclick=function(){filterHomeWallet('expense')};
+
+  // INIT
+  loadWalletActivity();
+  renderWalletActivity();
+  renderVaults();
+  autoReconnect();
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
